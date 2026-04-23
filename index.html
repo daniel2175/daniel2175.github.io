@@ -1025,15 +1025,15 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 500, maxHeight: "92vh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderRadius: "14px 14px 0 0", boxShadow: `0 -4px 30px ${rank.color}33` }}>
-              {/* drag handle */}
+            <div style={{ position: "relative", width: "100%", maxWidth: 500, height: "92svh", maxHeight: "92svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 0 0", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
+              {/* drag handle — fixed, never scrolls */}
               <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: G.goldDim+"44" }}/>
               </div>
-              {/* Close button */}
+              {/* Close button — fixed */}
               <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 12, right: 14, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: `1px solid ${G.goldDim}44`, color: G.text, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 0 }}>✕</button>
-              {/* Scrollable content wrapper */}
-              <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1 }}>
+              {/* Scrollable content — fills remaining height */}
+              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", minHeight: 0 }}>
 
               {/* ── Large photo banner ── */}
               <div style={{ position: "relative", width: "100%", aspectRatio: "1", maxHeight: "38vh", background: rank.color+"22", overflow: "hidden" }}>

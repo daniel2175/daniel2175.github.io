@@ -1023,13 +1023,9 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         const isEditingTitle = titleEdit === selectedPerson.id;
         const isRestricted = isExiled || isCommoner || isUnplaced;
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "76px", paddingTop: "64px" }}
+          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "100px", paddingTop: "25px" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
             <div style={{ position: "relative", width: "calc(100% - 24px)", maxWidth: 480, height: "62svh", maxHeight: "62svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 14px 14px", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
-              {/* drag handle — fixed, never scrolls */}
-              <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: G.goldDim+"44" }}/>
-              </div>
               {/* Close button — fixed */}
               <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 12, right: 14, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: `1px solid ${G.goldDim}44`, color: G.text, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 0 }}>✕</button>
               {/* Scrollable content — fills remaining height */}

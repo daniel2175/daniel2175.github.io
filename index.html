@@ -664,6 +664,8 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
   const [showPwModal, setShowPwModal]     = useState(false);
   const [pwInput, setPwInput]             = useState("");
   const [pwError, setPwError]             = useState(false);
+  const [borderExpanded, setBorderExpanded] = useState(false);
+  const [logExpanded, setLogExpanded]       = useState(false);
   const VIDEO_PASSWORD = "2175";
 
   const handleModeClick = (key) => {
@@ -1021,12 +1023,17 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         const isEditingTitle = titleEdit === selectedPerson.id;
         const isRestricted = isExiled || isCommoner || isUnplaced;
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}
+          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 420, maxHeight: "82vh", overflowY: "auto", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderRadius: 3, overflow: "hidden", boxShadow: `0 0 30px ${rank.color}33` }}>
-              {cornerSet(rank.color + "66")}
+            <div style={{ position: "relative", width: "100%", maxWidth: 500, maxHeight: "92vh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderRadius: "14px 14px 0 0", boxShadow: `0 -4px 30px ${rank.color}33` }}>
+              {/* drag handle */}
+              <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: G.goldDim+"44" }}/>
+              </div>
               {/* Close button */}
-              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: `1px solid ${G.goldDim}44`, color: G.text, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 0 }}>✕</button>
+              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 12, right: 14, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: `1px solid ${G.goldDim}44`, color: G.text, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 0 }}>✕</button>
+              {/* Scrollable content wrapper */}
+              <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1 }}>
 
               {/* ── Large photo banner ── */}
               <div style={{ position: "relative", width: "100%", aspectRatio: "1", maxHeight: "38vh", background: rank.color+"22", overflow: "hidden" }}>
@@ -1105,12 +1112,19 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
                   </div>
                 )}
 
-                {/* Border style picker */}
+                {/* ── Collapsible: 邊框樣式 ── */}
                 {!isRestricted && rank.hasBorder && (
-                  <>
-                    <Divider color={rank.color+"22"} />
-                    <BorderPicker currentIdx={selectedPerson.borderStyle ?? -1} color={rank.color} onSelect={idx => setBorderStyle(selectedPerson.id, idx)} />
-                  </>
+                  <div style={{ borderTop: `1px solid ${rank.color}22`, marginTop: 6 }}>
+                    <button onClick={() => setBorderExpanded(v => !v)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                      <span style={{ fontSize: 10, color: G.goldDim, letterSpacing: 3 }}>◈ 邊框樣式 BORDER</span>
+                      <span style={{ fontSize: 12, color: G.goldDim, display: "inline-block", transform: borderExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▾</span>
+                    </button>
+                    {borderExpanded && (
+                      <div style={{ paddingBottom: 10 }}>
+                        <BorderPicker currentIdx={selectedPerson.borderStyle ?? -1} color={rank.color} onSelect={idx => setBorderStyle(selectedPerson.id, idx)} />
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Interactions */}
@@ -1143,12 +1157,15 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
                         </div>
                       </>
                     )}
+                    {/* ── Collapsible: 互動紀錄 ── */}
                     {(selectedPerson.log||[]).length > 0 && (
-                      <>
-                        <Divider color={G.goldDim+"18"} />
-                        <div style={{ marginTop: 6 }}>
-                          <div style={{ fontSize: 7, color: G.goldDim, letterSpacing: 4, marginBottom: 4 }}>互動紀錄</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 90, overflowY: "auto" }}>
+                      <div style={{ borderTop: `1px solid ${G.goldDim}18`, marginTop: 8 }}>
+                        <button onClick={() => setLogExpanded(v => !v)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                          <span style={{ fontSize: 7, color: G.goldDim, letterSpacing: 4 }}>互動紀錄 ({(selectedPerson.log||[]).length})</span>
+                          <span style={{ fontSize: 12, color: G.goldDim, display: "inline-block", transform: logExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▾</span>
+                        </button>
+                        {logExpanded && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 8 }}>
                             {(selectedPerson.log||[]).map((e, i) => (
                               <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 7px", background: "rgba(0,0,0,0.18)", borderRadius: 1, fontSize: 10 }}>
                                 {e.ia?.icon && <img src={e.ia.icon} style={{ width: 12, height: 12, borderRadius: 1 }} />}
@@ -1157,12 +1174,13 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
                               </div>
                             ))}
                           </div>
-                        </div>
-                      </>
+                        )}
+                      </div>
                     )}
                   </>
                 )}
               </div>{/* end info section */}
+              </div>{/* end scrollable */}
             </div>
           </div>
         );

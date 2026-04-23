@@ -1023,9 +1023,9 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         const isEditingTitle = titleEdit === selectedPerson.id;
         const isRestricted = isExiled || isCommoner || isUnplaced;
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "60px" }}
+          <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "76px", paddingTop: "64px" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 500, height: "72svh", maxHeight: "72svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 14px 14px", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
+            <div style={{ position: "relative", width: "calc(100% - 24px)", maxWidth: 480, height: "62svh", maxHeight: "62svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 14px 14px", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
               {/* drag handle — fixed, never scrolls */}
               <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: G.goldDim+"44" }}/>

@@ -1025,7 +1025,7 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: 500, height: "92svh", maxHeight: "92svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 0 0", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 500, height: "78svh", maxHeight: "78svh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 0 0", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
               {/* drag handle — fixed, never scrolls */}
               <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: G.goldDim+"44" }}/>

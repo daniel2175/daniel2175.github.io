@@ -1025,7 +1025,7 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "0px", paddingBottom: "0px" }}
             onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div style={{ position: "relative", width: "calc(100% - 24px)", maxWidth: 480, marginTop: "100px", height: "calc(100svh - 100px - 120px)", maxHeight: "calc(100svh - 100px - 120px)", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 14px 14px", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
+            <div style={{ position: "relative", width: "calc(100% - 24px)", maxWidth: 480, marginTop: "200px", height: "calc(100svh - 200px - 120px)", maxHeight: "calc(100svh - 200px - 120px)", display: "flex", flexDirection: "column", background: `linear-gradient(135deg,${rank.color}0c,${G.bg2})`, border: `1px solid ${rank.color}44`, borderTop: `1px solid ${rank.color}55`, borderRadius: "14px 14px 14px 14px", boxShadow: `0 -4px 30px ${rank.color}33`, overflow: "hidden" }}>
               {/* Close button — fixed */}
               <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 12, right: 14, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: `1px solid ${G.goldDim}44`, color: G.text, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, padding: 0 }}>✕</button>
               {/* Scrollable content — fills remaining height */}
@@ -1620,7 +1620,15 @@ function App() {
   const [page, setPage]     = useState("chart");
   const [mode, setMode]     = useState("friendship");
   const [people, setPeople] = useState(() => cached?.people ?? []);
-  const [slots, setSlots]   = useState(() => cached?.slots ?? buildEmptySlots());
+  const [slots, setSlots]   = useState(() => {
+    const fresh = buildEmptySlots();
+    if (!cached?.slots) return fresh;
+    const merged = { ...fresh };
+    for (const m of ["friendship","romance","video"]) {
+      merged[m] = { ...fresh[m], ...(cached.slots[m] ?? {}) };
+    }
+    return merged;
+  });
   const [specialAssign, setSpecialAssign] = useState(() => cached?.specialAssign ?? { nu: Array(5).fill(null) });
   const [interactions, setInteractions]   = useState(() => cached?.interactions ?? DEFAULT_INTERACTIONS);
   const [toast, setToast]   = useState(null);
@@ -1632,9 +1640,17 @@ function App() {
     sbLoad().then(cloud => {
       if (!cloud) return;
       if (cloud.people)        setPeople(cloud.people);
-      if (cloud.slots)         setSlots(cloud.slots);
       if (cloud.specialAssign) setSpecialAssign(cloud.specialAssign);
       if (cloud.interactions)  setInteractions(cloud.interactions);
+      // Merge slots: always ensure all modes and rank slots exist
+      if (cloud.slots) {
+        const fresh = buildEmptySlots();
+        const merged = { ...fresh };
+        for (const m of ["friendship","romance","video"]) {
+          merged[m] = { ...fresh[m], ...(cloud.slots[m] ?? {}) };
+        }
+        setSlots(merged);
+      }
       lsSave(cloud);
     });
   }, []);

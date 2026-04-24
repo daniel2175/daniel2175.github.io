@@ -755,6 +755,16 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
     setTimeout(() => setSlotModal({ personId, rankDef, mode }), 100);
   };
 
+  const cancelDecree = () => {
+    if (!decree) return;
+    const { personId, rankDef } = decree;
+    // Roll back to just below the slotted rank threshold so person stays in free ranks
+    const rollbackPts = rankDef.points - 10;
+    setPeople(prev => prev.map(x => x.id !== personId ? x : { ...x, [mode]: rollbackPts }));
+    showToast(`撤回旨意，${personById(personId)?.name ?? ""}維持在${rollbackPts} pts`);
+    setDecree(null);
+  };
+
   const confirmChongDecree = () => {
     if (!chongDecree) return;
     const { personId, newPts, ia } = chongDecree;
@@ -1266,7 +1276,7 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
           </div>
         );
       })()}
-      <DecreeModal decree={decree ? { personName: personById(decree.personId)?.name || "", rankZh: decree.rankDef.zh, rankColor: decree.rankDef.color } : null} onConfirm={confirmDecree} onCancel={() => setDecree(null)} />
+      <DecreeModal decree={decree ? { personName: personById(decree.personId)?.name || "", rankZh: decree.rankDef.zh, rankColor: decree.rankDef.color } : null} onConfirm={confirmDecree} onCancel={cancelDecree} />
       <PlacementModal person={placementTarget} mode={mode} onPlace={handlePlace} onCancel={() => setPlacementTarget(null)} />
 
       {/* ── Password modal for 影視 ── */}
@@ -1656,11 +1666,21 @@ function App() {
   const [syncStatus, setSyncStatus] = useState("idle"); // idle | saving | saved | error
   const saveTimer = useRef(null);
 
-  // On mount: fetch from Supabase and hydrate (overrides cache if cloud has data)
+  // Sync nextPersonId to be above any loaded person IDs (prevents ID collisions)
+  useEffect(() => {
+    if (people.length > 0) {
+      const maxId = Math.max(...people.map(p => p.id ?? 0));
+      if (maxId >= nextPersonId) nextPersonId = maxId + 1;
+    }
+  }, []);
   useEffect(() => {
     sbLoad().then(cloud => {
       if (!cloud) return;
-      if (cloud.people)        setPeople(cloud.people);
+      if (cloud.people) {
+        setPeople(cloud.people);
+        const maxId = Math.max(...cloud.people.map(p => p.id ?? 0), 0);
+        if (maxId >= nextPersonId) nextPersonId = maxId + 1;
+      }
       if (cloud.specialAssign) setSpecialAssign(cloud.specialAssign);
       if (cloud.interactions)  setInteractions(cloud.interactions);
       // Merge slots: always ensure all modes and rank slots exist

@@ -721,12 +721,22 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
       setPeople(prev => prev.map(x => x.id !== pid ? x : { ...x, specialPts: newPts, specialLog: [{ ia, points: ia.points, ts: Date.now() }, ...(x.specialLog||[])].slice(0, 20) }));
       return;
     }
-    const newPoints = Math.max(0, (p[mode] ?? 0) + ia.points);
-    const before = getRankDef(p[mode] ?? 0, mode), after = getRankDef(newPoints, mode);
+    const oldPts = p[mode] ?? 0;
+    const newPoints = Math.max(0, oldPts + ia.points);
+    const before = getRankDef(oldPts, mode), after = getRankDef(newPoints, mode);
+
     if (before.id !== after.id) {
-      const up = newPoints > (p[mode] ?? 0);
-      if (!up && before.slotted) clearPersonFromSlots(pid, mode);
-      if (up && after.slotted) { setDecree({ personId: pid, rankDef: after, newPoints, ia }); return; }
+      const up = newPoints > oldPts;
+      if (!up) {
+        // Demotion: always clear from slots regardless of rank
+        clearPersonFromSlots(pid, mode);
+        // If demoting into a slotted rank, just move to lower free rank — no slot needed
+      }
+      if (up && after.slotted) {
+        // Promotion into slotted rank: show decree first
+        setDecree({ personId: pid, rankDef: after, newPoints, ia });
+        return;
+      }
       setTimeout(() => showToast(up ? `✦ ${p.name} 晉升為${after.zh}` : `✦ ${p.name} 降為${after.zh}`), 100);
     }
     setPeople(prev => prev.map(x => x.id !== pid ? x : { ...x, [mode]: newPoints, log: [{ ia, points: ia.points, ts: Date.now() }, ...(x.log||[])].slice(0, 20) }));
@@ -736,10 +746,13 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
     if (!decree) return;
     const { personId, rankDef, newPoints, ia } = decree;
     const p = personById(personId);
+    // Clear from any existing slot first
+    clearPersonFromSlots(personId, mode);
     setPeople(prev => prev.map(x => x.id !== personId ? x : { ...x, [mode]: newPoints, log: [{ ia, points: ia.points, ts: Date.now() }, ...(x.log||[])].slice(0, 20) }));
     showToast(`✦ ${p?.name} 晉封為${rankDef.zh}`);
     setDecree(null);
-    setTimeout(() => setSlotModal({ personId, rankDef, mode }), 200);
+    setSelected(null); // close person card
+    setTimeout(() => setSlotModal({ personId, rankDef, mode }), 100);
   };
 
   const confirmChongDecree = () => {
@@ -795,8 +808,17 @@ function ChartPage({ mode, setMode, people, setPeople, slots, setSlots, specialA
   const exiledPeople   = fieldPeople.filter(p => p.exiled && !p.commoner);
   const commonerPeople = fieldPeople.filter(p => p.commoner);
 
+  // All person IDs currently assigned to a slot in this mode
+  const slottedPersonIds = new Set(
+    Object.values(slots[mode] ?? {}).flat().filter(Boolean)
+  );
+
   const freeGrouped = ranks.filter(r => !r.slotted).map(rank => ({
-    rank, members: placedPeople.filter(p => getRankDef(p[mode], mode).id === rank.id).sort((a,b) => b[mode] - a[mode]),
+    rank, members: placedPeople.filter(p => {
+      // Only show in free rows if their rank is genuinely free (non-slotted)
+      const rd = getRankDef(p[mode] ?? 0, mode);
+      return rd.id === rank.id && !rd.slotted;
+    }).sort((a,b) => (b[mode]??0) - (a[mode]??0)),
   }));
   const modeInteractions    = interactions[mode] || [];
   const specialInteractions = interactions.special || [];

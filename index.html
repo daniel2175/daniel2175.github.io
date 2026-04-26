@@ -22,6 +22,8 @@
     #root { height: 100%; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .spin-icon { animation: spin 1s linear infinite; transform-origin: center; display: block; }
   </style>
 </head>
 <body>
@@ -1696,23 +1698,26 @@ function App() {
     });
   }, []);
 
-  // Debounced auto-save: instant to localStorage, 1.2s debounce to Supabase
+  // Auto-save to localStorage only (instant, no cloud risk)
   useEffect(() => {
     const state = { people, slots, specialAssign, interactions };
     lsSave(state);
-    setSyncStatus("saving");
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      try {
-        await sbSave(state);
-        setSyncStatus("saved");
-        setTimeout(() => setSyncStatus("idle"), 2000);
-      } catch {
-        setSyncStatus("error");
-        setTimeout(() => setSyncStatus("idle"), 3000);
-      }
-    }, 1200);
   }, [people, slots, specialAssign, interactions]);
+
+  // Manual save to Supabase
+  const manualSave = async () => {
+    if (syncStatus === "saving") return;
+    setSyncStatus("saving");
+    try {
+      const state = { people, slots, specialAssign, interactions };
+      await sbSave(state);
+      setSyncStatus("saved");
+      setTimeout(() => setSyncStatus("idle"), 2500);
+    } catch {
+      setSyncStatus("error");
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    }
+  };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2600); };
 
@@ -1775,15 +1780,40 @@ function App() {
         <div style={{ padding: "10px 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 8, color: G.goldDim, letterSpacing: 4, marginBottom: 1 }}>Rader的紫禁城</div>
-              {/* Sync indicator */}
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
-                {syncStatus === "saving" && <><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#FCD34D", animation: "pulse 1s ease-in-out infinite" }}/><span style={{ fontSize: 7, color: "#FCD34D", letterSpacing: 1 }}>同步中</span></>}
-                {syncStatus === "saved"  && <><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#34D399" }}/><span style={{ fontSize: 7, color: "#34D399", letterSpacing: 1 }}>已同步</span></>}
-                {syncStatus === "error"  && <><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#F87171" }}/><span style={{ fontSize: 7, color: "#F87171", letterSpacing: 1 }}>同步失敗</span></>}
-              </div>
             <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 2, background: `linear-gradient(180deg,${G.goldBr},${G.gold})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>內心位份圖</div>
           </div>
 
+          {/* Manual save button */}
+          <button onClick={manualSave} disabled={syncStatus === "saving"} style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            padding: "7px 14px", borderRadius: 3, cursor: syncStatus === "saving" ? "not-allowed" : "pointer",
+            fontFamily: "inherit", border: `1px solid ${syncStatus === "saved" ? "#34D399" : syncStatus === "error" ? "#F87171" : G.goldDim+"55"}`,
+            background: syncStatus === "saved" ? "#34D39918" : syncStatus === "error" ? "#F8717118" : G.goldFog,
+            transition: "all 0.2s",
+          }}>
+            {syncStatus === "saving" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCD34D" strokeWidth="2" strokeLinecap="round" className="spin-icon">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            ) : syncStatus === "saved" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            ) : syncStatus === "error" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.goldBr} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            )}
+            <span style={{ fontSize: 8, letterSpacing: 1, color: syncStatus === "saved" ? "#34D399" : syncStatus === "error" ? "#F87171" : G.goldBr }}>
+              {syncStatus === "saving" ? "儲存中" : syncStatus === "saved" ? "已儲存" : syncStatus === "error" ? "失敗" : "儲存"}
+            </span>
+          </button>
         </div>
         <div style={{ height: 1, background: `linear-gradient(to right, transparent, ${G.goldDim}55, transparent)` }} />
       </div>

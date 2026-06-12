@@ -567,7 +567,28 @@ function App(){
     });
   },[]);
 
-  // Auto-save ONLY after initial load is complete
+  // Re-sync from Supabase whenever the app comes back into focus
+  useEffect(()=>{
+    const onVisible=()=>{
+      if(document.visibilityState==="visible" && !initialLoad.current){
+        setSyncStatus(s=>{
+          if(s==="saving") return s; // don't overwrite mid-save
+          sbLoad().then(cloud=>{
+            if(cloud?.people?.length){
+              setPeople(cloud.people);
+              setRels(cloud.rels||[]);
+              const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1;
+              const mr=Math.max(...(cloud.rels||[]).map(r=>r.id??0),0); if(mr>=RID)RID=mr+1;
+              lsSave(cloud);
+            }
+          }).catch(()=>{});
+          return s;
+        });
+      }
+    };
+    document.addEventListener("visibilitychange",onVisible);
+    return ()=>document.removeEventListener("visibilitychange",onVisible);
+  },[]);
   useEffect(()=>{
     if(initialLoad.current) return; // skip until load is done
     const state={people,rels};

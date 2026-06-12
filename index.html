@@ -57,6 +57,27 @@ async function sbSave(state){
   }catch{return false;}
 }
 
+// Compress image before storing to keep payload small
+function compressImg(file, maxW, maxH, quality=0.75){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width:w,height:h}=img;
+        const ratio=Math.min(maxW/w,maxH/h,1);
+        w=Math.round(w*ratio); h=Math.round(h*ratio);
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Themes ────────────────────────────────────────────────────────────────
 const T = {
   day: {

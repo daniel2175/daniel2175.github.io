@@ -48,13 +48,27 @@ async function sbLoad(){
 }
 async function sbSave(state){
   try{
-    await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main`,{
+    // Try PATCH first
+    const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main`,{
       method:"PATCH",
       headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},
       body:JSON.stringify({data:state,updated_at:new Date().toISOString()})
     });
-    return true;
-  }catch{return false;}
+    if(r.ok) return true;
+    // If PATCH fails, try upsert
+    const r2 = await fetch(`${SB_URL}/rest/v1/imperial_rank`,{
+      method:"POST",
+      headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({id:"main",data:state,updated_at:new Date().toISOString()})
+    });
+    if(r2.ok) return true;
+    const txt = await r2.text();
+    console.error("sbSave error:",r2.status,txt);
+    return false;
+  }catch(e){
+    console.error("sbSave exception:",e);
+    return false;
+  }
 }
 
 // Compress image before storing to keep payload small
@@ -560,16 +574,16 @@ function App(){
     return ()=>{ clearInterval(poll); document.removeEventListener("visibilitychange",onVis); window.removeEventListener("focus",sync); window.removeEventListener("pageshow",sync); };
   },[]);
 
-  // Save to Supabase on every change (gated, debounced 600ms)
+  // Auto-save every 15 minutes
   useEffect(()=>{
-    if(!loaded.current) return;
-    setSyncStatus("saving");
-    clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(async()=>{
+    const interval=setInterval(async()=>{
+      if(!loaded.current) return;
+      setSyncStatus("saving");
       const ok=await sbSave({people,rels});
       setSyncStatus(ok?"saved":"error");
       setTimeout(()=>setSyncStatus("idle"),2000);
-    },600);
+    },15*60*1000);
+    return ()=>clearInterval(interval);
   },[people,rels]);
 
   // Force-save on page hide
@@ -586,7 +600,7 @@ function App(){
     setSyncStatus("saving");
     const ok=await sbSave({people,rels});
     setSyncStatus(ok?"saved":"error");
-    setTimeout(()=>setSyncStatus("idle"),2500);
+    setTimeout(()=>setSyncStatus("idle"),3000);
   };
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),2500);};

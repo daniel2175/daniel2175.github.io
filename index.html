@@ -490,7 +490,9 @@ function App(){
     const timeout=setTimeout(()=>{setSplashFading(true);setTimeout(()=>setAppReady(true),500);},5000);
     sbLoad().then(cloud=>{
       clearTimeout(timeout);
-      if(cloud){
+      // Only restore from Supabase if localStorage has no people yet
+      const hasCached = (cached?.people?.length ?? 0) > 0;
+      if(cloud && !hasCached){
         if(cloud.people){setPeople(cloud.people);const m=Math.max(...cloud.people.map(p=>p.id??0),0);if(m>=NID)NID=m+1;}
         if(cloud.rels){setRels(cloud.rels);const m=Math.max(...cloud.rels.map(r=>r.id??0),0);if(m>=RID)RID=m+1;}
         lsSave(cloud);
@@ -513,7 +515,7 @@ function App(){
       await sbSave(state);
       setSyncStatus("saved");
       setTimeout(()=>setSyncStatus("idle"),2000);
-    },2000);
+    },800);
   },[people,rels]);
 
   const manualSave=async()=>{

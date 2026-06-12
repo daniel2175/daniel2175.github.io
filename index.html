@@ -569,28 +569,43 @@ function App(){
     });
   },[]);
 
-  // Re-sync from Supabase whenever the app comes back into focus
+  // Re-sync from Supabase: visibilitychange + focus + pageshow (iOS PWA compat) + 30s poll
   useEffect(()=>{
-    const onVisible=()=>{
-      if(document.visibilityState==="visible" && !initialLoad.current){
-        setSyncStatus(s=>{
-          if(s==="saving") return s; // don't overwrite mid-save
-          sbLoad().then(cloud=>{
-            if(cloud?.people?.length){
-              setPeople(cloud.people);
-              setRels(cloud.rels||[]);
-              const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1;
-              const mr=Math.max(...(cloud.rels||[]).map(r=>r.id??0),0); if(mr>=RID)RID=mr+1;
-              lsSave(cloud);
-            }
-          }).catch(()=>{});
-          return s;
-        });
-      }
+    const sync=()=>{
+      if(initialLoad.current) return;
+      sbLoad().then(cloud=>{
+        if(cloud?.people?.length){
+          setPeople(p=>{
+            // Only update if cloud has different/more data
+            if(JSON.stringify(p)===JSON.stringify(cloud.people)) return p;
+            return cloud.people;
+          });
+          setRels(r=>{
+            if(JSON.stringify(r)===JSON.stringify(cloud.rels||[])) return r;
+            return cloud.rels||[];
+          });
+          const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1;
+          const mr=Math.max(...(cloud.rels||[]).map(r=>r.id??0),0); if(mr>=RID)RID=mr+1;
+          lsSave(cloud);
+        }
+      }).catch(()=>{});
     };
-    document.addEventListener("visibilitychange",onVisible);
-    return ()=>document.removeEventListener("visibilitychange",onVisible);
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")sync();});
+    window.addEventListener("focus",sync);
+    window.addEventListener("pageshow",sync);
+    const poll=setInterval(sync,30000);
+    return ()=>{ clearInterval(poll); window.removeEventListener("focus",sync); window.removeEventListener("pageshow",sync); };
   },[]);
+
+  // Save immediately when page is hidden (tab switch / close)
+  useEffect(()=>{
+    const onHide=()=>{
+      if(!initialLoad.current) sbSave({people,rels});
+    };
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")onHide();});
+    window.addEventListener("pagehide",onHide);
+    return ()=>window.removeEventListener("pagehide",onHide);
+  },[people,rels]);
   useEffect(()=>{
     if(initialLoad.current) return; // skip until load is done
     const state={people,rels};
@@ -601,7 +616,7 @@ function App(){
       await sbSave(state);
       setSyncStatus("saved");
       setTimeout(()=>setSyncStatus("idle"),2000);
-    },1000);
+    },400);
   },[people,rels]);
 
   const manualSave=async()=>{

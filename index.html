@@ -423,8 +423,7 @@ function ResidentDetail({person,people,rels,th,isDark,onClose,onUpdate,onDelete,
 // ═══════════════════════════════════════════════════════════════════════════
 // RESIDENTS PAGE
 // ═══════════════════════════════════════════════════════════════════════════
-function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast}){
-  const [sel,setSel]=useState(null);
+function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpenProfile}){
   const [showAdd,setShowAdd]=useState(false);
   const [form,setForm]=useState({name:"",img:null,portrait:null,age:""});
   const fRef=useRef(); const pRef=useRef();
@@ -460,7 +459,7 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast}){
       ) : (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(100px, 1fr))",gap:10}}>
           {people.map(p=>(
-            <div key={p.id} onClick={()=>setSel(p.id)} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",cursor:"pointer",boxShadow:`0 1px 4px ${th.shadow}`}}>
+            <div key={p.id} onClick={()=>onOpenProfile(p.id)} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",cursor:"pointer",boxShadow:`0 1px 4px ${th.shadow}`}}>
               <div style={{aspectRatio:"3/4",background:th.panel,overflow:"hidden"}}>
                 {(p.portrait||p.img)?<img src={p.portrait||p.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>}
               </div>
@@ -508,12 +507,6 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast}){
         </Overlay>
       )}
 
-      {/* Detail */}
-      {selected && (
-        <ResidentDetail person={selected} people={people} rels={rels} th={th} isDark={isDark}
-          onClose={()=>setSel(null)} onUpdate={update} onDelete={remove}
-          onAddRel={addRel} onRemoveRel={removeRel}/>
-      )}
     </div>
   );
 }
@@ -526,6 +519,9 @@ function App(){
   const [appMode,setAppMode]=useState("day");
   const [people,setPeople]=useState([]);
   const [rels,setRels]=useState([]);
+  const [events,setEvents]=useState([]);
+  const [messages,setMessages]=useState([]);
+  const [profileId,setProfileId]=useState(null); // full-screen profile
   const [appReady,setAppReady]=useState(false);
   const [splashFading,setSplashFading]=useState(false);
   const [syncStatus,setSyncStatus]=useState("idle");
@@ -539,12 +535,12 @@ function App(){
     if(cloud?.people){
       setPeople(cloud.people);
       setRels(cloud.rels||[]);
-      if(cloud.people.length){
-        const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1;
-      }
-      if((cloud.rels||[]).length){
-        const mr=Math.max(...cloud.rels.map(r=>r.id??0),0); if(mr>=RID)RID=mr+1;
-      }
+      setEvents(cloud.events||[]);
+      setMessages(cloud.messages||[]);
+      if(cloud.people.length){ const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1; }
+      if((cloud.rels||[]).length){ const mr=Math.max(...cloud.rels.map(r=>r.id??0),0); if(mr>=RID)RID=mr+1; }
+      if((cloud.events||[]).length){ const me=Math.max(...cloud.events.map(e=>e.id??0),0); if(me>=EVID)EVID=me+1; }
+      if((cloud.messages||[]).length){ const mm=Math.max(...cloud.messages.map(m=>m.id??0),0); if(mm>=MSGID)MSGID=mm+1; }
     }
   };
 
@@ -579,26 +575,26 @@ function App(){
     const interval=setInterval(async()=>{
       if(!loaded.current) return;
       setSyncStatus("saving");
-      const ok=await sbSave({people,rels});
+      const ok=await sbSave({people,rels,events,messages});
       setSyncStatus(ok?"saved":"error");
       setTimeout(()=>setSyncStatus("idle"),2000);
     },15*60*1000);
     return ()=>clearInterval(interval);
-  },[people,rels]);
+  },[people,rels,events,messages]);
 
   // Force-save on page hide
   useEffect(()=>{
-    const save=()=>{ if(loaded.current) sbSave({people,rels}); };
+    const save=()=>{ if(loaded.current) sbSave({people,rels,events,messages}); };
     const onVis=()=>{ if(document.visibilityState==="hidden") save(); };
     document.addEventListener("visibilitychange",onVis);
     window.addEventListener("pagehide",save);
     return ()=>{ document.removeEventListener("visibilitychange",onVis); window.removeEventListener("pagehide",save); };
-  },[people,rels]);
+  },[people,rels,events,messages]);
 
   const manualSave=async()=>{
     if(syncStatus==="saving") return;
     setSyncStatus("saving");
-    const ok=await sbSave({people,rels});
+    const ok=await sbSave({people,rels,events,messages});
     setSyncStatus(ok?"saved":"error");
     setTimeout(()=>setSyncStatus("idle"),3000);
   };
@@ -647,10 +643,27 @@ function App(){
         </div>
       </div>
 
+      {/* Profile page (full screen, above everything) */}
+      {profileId && (() => {
+        const person = people.find(p=>p.id===profileId);
+        if(!person) { setProfileId(null); return null; }
+        return <ResidentProfile
+          person={person} people={people} rels={rels}
+          events={events} setEvents={setEvents}
+          messages={messages} setMessages={setMessages}
+          th={th} isDark={isDark}
+          onBack={()=>setProfileId(null)}
+          onUpdate={(id,u)=>setPeople(prev=>prev.map(p=>p.id===id?{...p,...u}:p))}
+          onDelete={id=>{setPeople(prev=>prev.filter(p=>p.id!==id));setRels(prev=>prev.filter(r=>r.a!==id&&r.b!==id));setProfileId(null);}}
+          onAddRel={(a,b,type)=>setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type}])}
+          onRemoveRel={id=>setRels(prev=>prev.filter(r=>r.id!==id))}
+        />;
+      })()}
+
       {/* Content */}
       <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"12px 12px 8px"}}>
         {page==="relationship"&&<RelationshipPage people={people} rels={rels} th={th} isDark={isDark}/>}
-        {page==="residents"&&<ResidentsPage people={people} setPeople={setPeople} rels={rels} setRels={setRels} th={th} isDark={isDark} showToast={showToast}/>}
+        {page==="residents"&&<ResidentsPage people={people} setPeople={setPeople} rels={rels} setRels={setRels} th={th} isDark={isDark} showToast={showToast} onOpenProfile={setProfileId}/>}
         <div style={{height:8}}/>
       </div>
 
@@ -670,6 +683,318 @@ function App(){
 
       {/* Toast */}
       {toast&&<div style={{position:"fixed",bottom:"calc(env(safe-area-inset-bottom,0px) + 72px)",left:"50%",transform:"translateX(-50%)",background:"#1C1E22",borderRadius:4,padding:"8px 18px",fontSize:12,fontWeight:600,color:"#fff",zIndex:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap",animation:"fadeSlide 0.3s ease",letterSpacing:0.3}}>{toast}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESIDENT PROFILE PAGE  (full screen)
+// ═══════════════════════════════════════════════════════════════════════════
+let EVID=1, MSGID=1;
+
+function ResidentProfile({person,people,rels,events,setEvents,messages,setMessages,th,isDark,onBack,onUpdate,onDelete,onAddRel,onRemoveRel}){
+  const [tab,setTab]=useState("info"); // info | interact | messages
+  const [editing,setEditing]=useState(false);
+  const [showAddRel,setShowAddRel]=useState(false);
+  const [relTarget,setRelTarget]=useState(null);
+  const [msgTarget,setMsgTarget]=useState(null); // person to message
+  const [msgInput,setMsgInput]=useState("");
+  const [newEvTarget,setNewEvTarget]=useState(null);
+  const [newEvText,setNewEvText]=useState("");
+  const msgEndRef=useRef(null);
+
+  const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",height:person.height||"",personality:person.personality||""});
+  const iStyle={padding:"8px 10px",borderRadius:3,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",width:"100%"};
+
+  const myRels=rels.filter(r=>r.a===person.id||r.b===person.id);
+  const known=myRels.map(r=>{const oid=r.a===person.id?r.b:r.a;const o=people.find(p=>p.id===oid);return o?{rel:r,other:o}:null;}).filter(Boolean);
+  const candidates=people.filter(p=>p.id!==person.id);
+
+  // Events involving this person
+  const myEvents=events.filter(e=>e.a===person.id||e.b===person.id).sort((a,b)=>b.ts-a.ts);
+
+  // Thread ID = sorted pair of IDs
+  const threadId=(a,b)=>[a,b].sort((x,y)=>x-y).join("_");
+  const getThread=(pid)=>messages.filter(m=>m.thread===threadId(person.id,pid)).sort((a,b)=>a.ts-b.ts);
+
+  const sendMsg=()=>{
+    if(!msgInput.trim()||!msgTarget) return;
+    setMessages(prev=>[...prev,{id:MSGID++,thread:threadId(person.id,msgTarget.id),sender:person.id,text:msgInput.trim(),ts:Date.now()}]);
+    setMsgInput("");
+  };
+
+  const addEvent=()=>{
+    if(!newEvText.trim()||!newEvTarget) return;
+    setEvents(prev=>[...prev,{id:EVID++,a:person.id,b:newEvTarget.id,text:newEvText.trim(),ts:Date.now()}]);
+    setNewEvText(""); setNewEvTarget(null);
+  };
+
+  // Scroll messages to bottom
+  useEffect(()=>{ if(tab==="messages"&&msgTarget) msgEndRef.current?.scrollIntoView({behavior:"smooth"}); },[messages,msgTarget,tab]);
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",flexDirection:"column",background:th.bg}}>
+      {/* Back header */}
+      <div style={{flexShrink:0,background:th.panel,borderBottom:`1px solid ${th.divider}`,paddingTop:"env(safe-area-inset-top,0px)"}}>
+        <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:4,border:"none",background:"transparent",color:th.accent,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Back
+          </button>
+          <span style={{flex:1,fontSize:15,fontWeight:800,color:th.text,textAlign:"center",marginRight:60}}>{person.name}</span>
+          <button onClick={()=>{setEditing(v=>!v);setF({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",height:person.height||"",personality:person.personality||""});}} style={{padding:"5px 12px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.card,color:th.textSub,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{editing?"Done":"Edit"}</button>
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",borderTop:`1px solid ${th.divider}`}}>
+          {[{k:"info",label:"Profile"},{k:"interact",label:"互動"},{k:"messages",label:"手機訊息"}].map(t=>(
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{flex:1,padding:"9px 4px",border:"none",background:"transparent",color:tab===t.k?th.accent:th.textMuted,fontSize:11,fontWeight:tab===t.k?700:400,cursor:"pointer",fontFamily:"inherit",position:"relative",borderBottom:`2px solid ${tab===t.k?th.accent:"transparent"}`,letterSpacing:0.3}}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+
+        {/* ── Profile tab ── */}
+        {tab==="info" && (
+          <div>
+            {/* Banner photo */}
+            <div style={{position:"relative",aspectRatio:"4/3",background:th.panel,overflow:"hidden"}}>
+              {(person.portrait||person.img)
+                ? <img src={person.portrait||person.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72,color:th.textMuted}}>{person.name[0]}</div>}
+              <div style={{position:"absolute",bottom:0,left:0,right:0,height:"50%",background:`linear-gradient(to top,${th.bg}ee,transparent)`}}/>
+              <div style={{position:"absolute",bottom:14,left:16}}>
+                <div style={{fontSize:26,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
+                {person.age&&<div style={{fontSize:12,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
+              </div>
+            </div>
+
+            <div style={{padding:"16px"}}>
+              {/* Edit form */}
+              {editing && (
+                <Panel th={th} style={{marginBottom:16,background:th.accentDim,border:`1px solid ${th.accent}33`}}>
+                  <div style={{padding:"12px",display:"flex",flexDirection:"column",gap:8}}>
+                    <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                      <label htmlFor="ep-avatar" style={{position:"relative",cursor:"pointer",flexShrink:0}}>
+                        <Avatar p={{...person,img:f.img}} size={44} th={th}/>
+                        <div style={{position:"absolute",inset:0,borderRadius:5,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📷</div>
+                      </label>
+                      <input id="ep-avatar" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],200,200).then(src=>setF(x=>({...x,img:src})))}/>
+                      <label htmlFor="ep-portrait" style={{cursor:"pointer",flexShrink:0,width:36,height:48,borderRadius:4,overflow:"hidden",border:`1.5px dashed ${th.divider}`,background:th.panel,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {f.portrait?<img src={f.portrait} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:13,opacity:0.4}}>🖼</span>}
+                      </label>
+                      <input id="ep-portrait" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],600,900).then(src=>setF(x=>({...x,portrait:src})))}/>
+                      <input value={f.name} onChange={e=>setF(x=>({...x,name:e.target.value}))} placeholder="Name" style={{...iStyle,fontWeight:700}}/>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                      <input value={f.age} onChange={e=>setF(x=>({...x,age:e.target.value}))} placeholder="Age" style={iStyle}/>
+                      <input value={f.height} onChange={e=>setF(x=>({...x,height:e.target.value}))} placeholder="Height" style={iStyle}/>
+                      <input value={f.personality} onChange={e=>setF(x=>({...x,personality:e.target.value}))} placeholder="Personality" style={iStyle}/>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{onUpdate(person.id,f);setEditing(false);}} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                      <button onClick={()=>{onDelete(person.id);onBack();}} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+                    </div>
+                  </div>
+                </Panel>
+              )}
+
+              {/* Bio chips */}
+              {(person.height||person.personality)&&!editing&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:16}}>
+                  {person.height&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>↕ {person.height}</span>}
+                  {person.personality&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>✦ {person.personality}</span>}
+                </div>
+              )}
+
+              {/* Relationships */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <span style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase"}}>Relationships ({known.length})</span>
+                <button onClick={()=>{setShowAddRel(true);setRelTarget(null);}} style={{padding:"4px 12px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ ADD</button>
+              </div>
+              {known.length===0
+                ? <div style={{textAlign:"center",padding:"20px",color:th.textMuted,fontSize:12,background:th.panel,borderRadius:6,border:`1px dashed ${th.divider}`}}>No relationships yet</div>
+                : <div style={{display:"flex",flexWrap:"wrap",gap:14}}>
+                    {known.map(({rel,other})=>{
+                      const col=relColor(rel.type,isDark); const def=relDef(rel.type);
+                      return (
+                        <div key={rel.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:64,position:"relative"}}>
+                          <div style={{borderRadius:"50%",padding:2,border:`2.5px solid ${col}`}}><Avatar p={other} size={48} round th={th}/></div>
+                          <span style={{fontSize:10,fontWeight:700,color:th.text,textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{other.name}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{def?.zh}</span>
+                          <button onClick={()=>onRemoveRel(rel.id)} style={{position:"absolute",top:-4,right:0,width:16,height:16,borderRadius:"50%",background:th.card,border:`1px solid ${th.cardBorder}`,color:th.textMuted,fontSize:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+              }
+            </div>
+          </div>
+        )}
+
+        {/* ── 互動 tab ── */}
+        {tab==="interact" && (
+          <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:10}}>
+            {/* Add event */}
+            <Panel th={th}>
+              <PanelHeader label="New Interaction" th={th}/>
+              <div style={{padding:"12px",display:"flex",flexDirection:"column",gap:8}}>
+                {/* Pick person */}
+                <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
+                  {candidates.map(c=>(
+                    <div key={c.id} onClick={()=>setNewEvTarget(t=>t?.id===c.id?null:c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",flexShrink:0}}>
+                      <div style={{borderRadius:"50%",padding:2,border:`2px solid ${newEvTarget?.id===c.id?th.accent:th.cardBorder}`,transition:"border-color 0.15s"}}>
+                        <Avatar p={c} size={38} round th={th}/>
+                      </div>
+                      <span style={{fontSize:9,fontWeight:600,color:newEvTarget?.id===c.id?th.accent:th.textMuted,width:44,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                    </div>
+                  ))}
+                  {candidates.length===0&&<span style={{fontSize:12,color:th.textMuted}}>Add more residents first</span>}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <input value={newEvText} onChange={e=>setNewEvText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEvent()} placeholder={newEvTarget?`What happened with ${newEvTarget.name}?`:"Select someone first..."} style={{flex:1,padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                  <button onClick={addEvent} disabled={!newEvText.trim()||!newEvTarget} style={{padding:"9px 14px",borderRadius:4,border:"none",background:newEvText.trim()&&newEvTarget?th.accent:th.divider,color:newEvText.trim()&&newEvTarget?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Log</button>
+                </div>
+              </div>
+            </Panel>
+
+            {/* Event feed */}
+            {myEvents.length===0
+              ? <div style={{textAlign:"center",padding:"32px",color:th.textMuted,fontSize:13}}>No interactions logged yet.</div>
+              : myEvents.map(ev=>{
+                  const otherId=ev.a===person.id?ev.b:ev.a;
+                  const other=people.find(p=>p.id===otherId);
+                  const isMe=ev.a===person.id;
+                  return (
+                    <div key={ev.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"10px 12px",background:th.card,borderRadius:8,border:`1px solid ${th.cardBorder}`}}>
+                      <Avatar p={isMe?person:other||{id:0,name:"?"}} size={36} round th={th}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:11,color:th.textMuted,marginBottom:3}}>
+                          <span style={{fontWeight:700,color:th.text}}>{isMe?person.name:other?.name}</span>
+                          {other&&<span> {isMe?"→":"←"} <span style={{fontWeight:700,color:th.accent}}>{isMe?other.name:person.name}</span></span>}
+                        </div>
+                        <div style={{fontSize:13,color:th.text,lineHeight:1.5}}>{ev.text}</div>
+                        <div style={{fontSize:10,color:th.textMuted,marginTop:4}}>{new Date(ev.ts).toLocaleString()}</div>
+                      </div>
+                      <button onClick={()=>setEvents(prev=>prev.filter(x=>x.id!==ev.id))} style={{padding:"3px 6px",borderRadius:3,border:"none",background:"transparent",color:th.textMuted,fontSize:11,cursor:"pointer"}}>✕</button>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        )}
+
+        {/* ── 手機訊息 tab ── */}
+        {tab==="messages" && (
+          <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+            {!msgTarget ? (
+              /* Contact list */
+              <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Select Contact</div>
+                {candidates.length===0
+                  ? <div style={{textAlign:"center",padding:"32px",color:th.textMuted,fontSize:13}}>Add more residents to message</div>
+                  : candidates.map(c=>{
+                      const thread=getThread(c.id);
+                      const last=thread[thread.length-1];
+                      const unread=thread.filter(m=>m.sender!==person.id).length;
+                      return (
+                        <div key={c.id} onClick={()=>setMsgTarget(c)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px",background:th.card,borderRadius:8,border:`1px solid ${th.cardBorder}`,cursor:"pointer"}}>
+                          <Avatar p={c} size={46} round th={th}/>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,fontWeight:700,color:th.text}}>{c.name}</div>
+                            <div style={{fontSize:12,color:th.textMuted,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?last.text:"No messages yet"}</div>
+                          </div>
+                          {thread.length>0&&<div style={{fontSize:11,fontWeight:700,color:th.accent,background:th.accentDim,borderRadius:10,padding:"2px 8px",flexShrink:0}}>{thread.length}</div>}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={th.textMuted} strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                        </div>
+                      );
+                    })
+                }
+              </div>
+            ) : (
+              /* Chat view */
+              <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+                {/* Chat header */}
+                <div style={{flexShrink:0,padding:"10px 14px",background:th.panel,borderBottom:`1px solid ${th.divider}`,display:"flex",alignItems:"center",gap:10}}>
+                  <button onClick={()=>setMsgTarget(null)} style={{border:"none",background:"transparent",color:th.accent,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                    Back
+                  </button>
+                  <Avatar p={msgTarget} size={32} round th={th}/>
+                  <span style={{fontSize:14,fontWeight:700,color:th.text}}>{msgTarget.name}</span>
+                </div>
+                {/* Messages */}
+                <div style={{flex:1,overflowY:"auto",padding:"12px",display:"flex",flexDirection:"column",gap:8,WebkitOverflowScrolling:"touch"}}>
+                  {getThread(msgTarget.id).length===0&&<div style={{textAlign:"center",padding:"24px",color:th.textMuted,fontSize:12}}>Start a conversation</div>}
+                  {getThread(msgTarget.id).map(m=>{
+                    const isMe=m.sender===person.id;
+                    const sender=isMe?person:msgTarget;
+                    return (
+                      <div key={m.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
+                        {!isMe&&<Avatar p={sender} size={28} round th={th}/>}
+                        <div style={{maxWidth:"72%",padding:"9px 13px",borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px",background:isMe?th.accent:th.card,border:isMe?"none":`1px solid ${th.cardBorder}`,color:isMe?"#fff":th.text,fontSize:13,lineHeight:1.5,boxShadow:`0 1px 3px ${th.shadow}`}}>
+                          {m.text}
+                          <div style={{fontSize:9,color:isMe?"rgba(255,255,255,0.65)":th.textMuted,marginTop:3,textAlign:"right"}}>{new Date(m.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={msgEndRef}/>
+                </div>
+                {/* Input */}
+                <div style={{flexShrink:0,padding:"10px 12px",paddingBottom:"max(env(safe-area-inset-bottom,0px),10px)",background:th.panel,borderTop:`1px solid ${th.divider}`,display:"flex",gap:8,alignItems:"flex-end"}}>
+                  <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder={`Message ${msgTarget.name}...`} style={{flex:1,padding:"10px 14px",borderRadius:20,background:th.card,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                  <button onClick={sendMsg} disabled={!msgInput.trim()} style={{width:38,height:38,borderRadius:"50%",border:"none",background:msgInput.trim()?th.accent:th.divider,color:"#fff",cursor:msgInput.trim()?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Add relationship modal */}
+      {showAddRel&&(
+        <Overlay onClose={()=>setShowAddRel(false)}>
+          <div style={{width:"100%",maxWidth:340,background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",boxShadow:`0 16px 48px ${th.shadow}`}}>
+            <PanelHeader label={relTarget?"Choose Type":"Choose Resident"} th={th} right={<button onClick={()=>setShowAddRel(false)} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>}/>
+            <div style={{padding:"14px",maxHeight:"50dvh",overflowY:"auto"}}>
+              {!relTarget
+                ? <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+                    {candidates.map(c=>{
+                      const ex=myRels.some(r=>r.a===c.id||r.b===c.id);
+                      return <div key={c.id} onClick={()=>setRelTarget(c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:60,cursor:"pointer",opacity:ex?0.45:1}}>
+                        <Avatar p={c} size={48} round th={th}/>
+                        <span style={{fontSize:10,fontWeight:600,color:th.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{c.name}</span>
+                        {ex&&<span style={{fontSize:8,color:th.textMuted}}>linked</span>}
+                      </div>;
+                    })}
+                    {candidates.length===0&&<div style={{textAlign:"center",padding:"16px",color:th.textMuted,fontSize:12,width:"100%"}}>No other residents.</div>}
+                  </div>
+                : <div>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                      <Avatar p={person} size={32} round th={th}/>
+                      <span style={{fontSize:13,color:th.textMuted}}>+</span>
+                      <Avatar p={relTarget} size={32} round th={th}/>
+                      <span style={{fontSize:12,fontWeight:700,color:th.text}}>{person.name} × {relTarget.name}</span>
+                    </div>
+                    <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>☀️ Day</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                      {REL_TYPES.day.map(t=><button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>)}
+                    </div>
+                    <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>🌙 Night</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {REL_TYPES.night.map(t=><button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>)}
+                    </div>
+                    <button onClick={()=>setRelTarget(null)} style={{marginTop:12,width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                  </div>
+              }
+            </div>
+          </div>
+        </Overlay>
+      )}
     </div>
   );
 }

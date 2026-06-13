@@ -408,16 +408,15 @@ function App(){
     });
   },[]);
 
-  // Poll every 15s + re-sync on visibility/focus
+  // Sync from cloud only on visibility change — no polling (prevents mid-edit overwrites)
   useEffect(()=>{
-    const sync=()=>{ if(loaded.current) loadCloud(); };
-    const onVis=()=>{ if(document.visibilityState==="visible") sync(); };
+    const onVis=()=>{
+      if(document.visibilityState==="visible" && loaded.current && !profileId) loadCloud();
+    };
     document.addEventListener("visibilitychange",onVis);
-    window.addEventListener("focus",sync);
-    window.addEventListener("pageshow",sync);
-    const poll=setInterval(sync,15000);
-    return ()=>{ clearInterval(poll); document.removeEventListener("visibilitychange",onVis); window.removeEventListener("focus",sync); window.removeEventListener("pageshow",sync); };
-  },[]);
+    window.addEventListener("pageshow",()=>{ if(loaded.current && !profileId) loadCloud(); });
+    return ()=>{ document.removeEventListener("visibilitychange",onVis); };
+  },[profileId]);
 
   // Auto-save every 2 seconds
   useEffect(()=>{
@@ -670,21 +669,21 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                         <Avatar p={{...person,img:f.img}} size={44} th={th}/>
                         <div style={{position:"absolute",inset:0,borderRadius:5,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📷</div>
                       </label>
-                      <input id="ep-avatar" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],200,200).then(src=>setF(x=>({...x,img:src})))}/>
+                      <input id="ep-avatar" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],200,200).then(src=>{setF(x=>({...x,img:src}));onUpdate(person.id,{img:src});})}/>
                       <label htmlFor="ep-portrait" style={{cursor:"pointer",flexShrink:0,width:36,height:48,borderRadius:4,overflow:"hidden",border:`1.5px dashed ${th.divider}`,background:th.panel,display:"flex",alignItems:"center",justifyContent:"center"}}>
                         {f.portrait?<img src={f.portrait} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:13,opacity:0.4}}>🖼</span>}
                       </label>
-                      <input id="ep-portrait" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],600,900).then(src=>setF(x=>({...x,portrait:src})))}/>
-                      <input value={f.name} onChange={e=>setF(x=>({...x,name:e.target.value}))} placeholder="Name" style={{...iStyle,fontWeight:700}}/>
+                      <input id="ep-portrait" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],600,900).then(src=>{setF(x=>({...x,portrait:src}));onUpdate(person.id,{portrait:src});})}/>
+                      <input value={f.name} onChange={e=>{const v=e.target.value;setF(x=>({...x,name:v}));onUpdate(person.id,{name:v});}} placeholder="Name" style={{...iStyle,fontWeight:700}}/>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                      <input value={f.age} onChange={e=>setF(x=>({...x,age:e.target.value}))} placeholder="Age" style={iStyle}/>
-                    <input value={f.occupation||""} onChange={e=>setF(x=>({...x,occupation:e.target.value}))} placeholder="Occupation 職業" style={iStyle}/>
-                      <input value={f.height} onChange={e=>setF(x=>({...x,height:e.target.value}))} placeholder="Height" style={iStyle}/>
-                      <input value={f.personality} onChange={e=>setF(x=>({...x,personality:e.target.value}))} placeholder="Personality" style={iStyle}/>
+                      <input value={f.age} onChange={e=>{const v=e.target.value;setF(x=>({...x,age:v}));onUpdate(person.id,{age:v});}} placeholder="Age" style={iStyle}/>
+                      <input value={f.occupation||""} onChange={e=>{const v=e.target.value;setF(x=>({...x,occupation:v}));onUpdate(person.id,{occupation:v});}} placeholder="Occupation 職業" style={iStyle}/>
+                      <input value={f.height} onChange={e=>{const v=e.target.value;setF(x=>({...x,height:v}));onUpdate(person.id,{height:v});}} placeholder="Height" style={iStyle}/>
+                      <input value={f.personality} onChange={e=>{const v=e.target.value;setF(x=>({...x,personality:v}));onUpdate(person.id,{personality:v});}} placeholder="Personality" style={iStyle}/>
                     </div>
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{onUpdate(person.id,{...f});setEditing(false);}} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                      <button onClick={()=>setEditing(false)} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Done</button>
                       <button onClick={()=>{onDelete(person.id);onBack();}} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
                     </div>
                   </div>

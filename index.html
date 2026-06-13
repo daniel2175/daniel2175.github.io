@@ -228,7 +228,7 @@ function RelationshipPage({people,rels,th,isDark}){
                 <g key={r.id}>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth="2" strokeLinecap="round" opacity="0.9"/>
                   <rect x={mx-18} y={my-8} width="36" height="14" rx="3" fill={th.card} stroke={col} strokeWidth="0.8"/>
-                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{selNode===r.b?(r.title||relDef(r.type)?.zh):relDef(r.type)?.zh}</text>
+                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{selNode===r.a?(r.titleA||relDef(r.type)?.zh):(r.titleB||relDef(r.type)?.zh)}</text>
                 </g>
               );
             })}
@@ -292,8 +292,8 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
     setRels(prev=>prev.filter(r=>r.a!==id&&r.b!==id));
     showToast("Resident removed");
   };
-  const addRel=(a,b,type,title="")=>{
-    setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,title}]);
+  const addRel=(a,b,type,titleA="",titleB="")=>{
+    setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,titleA,titleB}]);
     showToast(`Relationship added: ${relDef(type)?.zh}`);
   };
   const removeRel=id=>setRels(prev=>prev.filter(r=>r.id!==id));
@@ -500,7 +500,7 @@ function App(){
           onBack={()=>setProfileId(null)}
           onUpdate={(id,u)=>setPeople(prev=>prev.map(p=>p.id===id?{...p,...u}:p))}
           onDelete={id=>{setPeople(prev=>prev.filter(p=>p.id!==id));setRels(prev=>prev.filter(r=>r.a!==id&&r.b!==id));setProfileId(null);}}
-          onAddRel={(a,b,type,title="")=>setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,title}])}
+          onAddRel={(a,b,type,titleA="",titleB="")=>setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,titleA,titleB}])}
           onRemoveRel={id=>setRels(prev=>prev.filter(r=>r.id!==id))}
         />;
       })()}
@@ -668,7 +668,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                         <div key={rel.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:64,position:"relative"}}>
                           <div style={{borderRadius:"50%",padding:2,border:`2.5px solid ${col}`}}><Avatar p={other} size={48} round th={th}/></div>
                           <span style={{fontSize:10,fontWeight:700,color:th.text,textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{other.name}</span>
-                          <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{rel.title||def?.zh}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{(rel.a===person.id?rel.titleA:rel.titleB)||def?.zh}</span>
                           <button onClick={()=>onRemoveRel(rel.id)} style={{position:"absolute",top:-4,right:0,width:16,height:16,borderRadius:"50%",background:th.card,border:`1px solid ${th.cardBorder}`,color:th.textMuted,fontSize:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
                         </div>
                       );
@@ -806,7 +806,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
         <Overlay onClose={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}}>
           <div style={{width:"100%",maxWidth:340,background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",boxShadow:`0 16px 48px ${th.shadow}`}}>
             <PanelHeader
-              label={!relTarget?"① Choose Person":!relCategory?"② Choose Category":"③ Choose Title"}
+              label={!relTarget?"① Choose Person":!relCategory?"② Choose Category":!relTitleA?"③ My Title":"④ Their Title"}
               th={th}
               right={<button onClick={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>}
             />
@@ -847,7 +847,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                   <button onClick={()=>setRelTarget(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
                 </div>
               )}
-              {relTarget&&relCategory&&(
+              {relTarget&&relCategory&&!relTitleA&&(
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"8px 10px",background:th.panel,borderRadius:5}}>
                     <div style={{width:8,height:8,borderRadius:"50%",background:relCategory.color,flexShrink:0}}/>
@@ -857,13 +857,40 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                   <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>{person.name} 的稱號</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
                     {relCategory.titles.map(title=>(
-                      <button key={title} onClick={()=>{
-                        onAddRel(person.id,relTarget.id,relCategory.id,title);
-                        setShowAddRel(false);setRelTarget(null);setRelCategory(null);
-                      }} style={{padding:"8px 16px",borderRadius:4,border:`1.5px solid ${relCategory.color}55`,background:relCategory.color+"12",color:relCategory.color,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{title}</button>
+                      <button key={title} onClick={()=>setRelTitleA(title)} style={{padding:"8px 16px",borderRadius:4,border:`1.5px solid ${relCategory.color}${relTitleA===title?"cc":"55"}`,background:relCategory.color+(relTitleA===title?"30":"12"),color:relCategory.color,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{title}</button>
                     ))}
                   </div>
-                  <button onClick={()=>setRelCategory(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                  {relTitleA && (
+                    <button onClick={()=>{/* proceed */}} style={{display:"none"}}/>
+                  )}
+                  <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <button onClick={()=>{setRelCategory(null);setRelTitleA(null);}} style={{flex:1,padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                    {relTitleA&&<button onClick={()=>setRelTitleA(null)} style={{flex:1,padding:"8px",borderRadius:4,border:`1px solid ${relCategory?.color}44`,background:relCategory?.color+"10",color:relCategory?.color,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Next →</button>}
+                  </div>
+                </div>
+              )}
+              {/* Step 4: B's title */}
+              {relTarget&&relCategory&&relTitleA&&(
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:relCategory.color,flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:relCategory.color}}>{relCategory.zh}</span>
+                    <span style={{fontSize:11,color:th.textMuted}}>{person.name}＝{relTitleA}</span>
+                  </div>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>{relTarget.name} 的稱號</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {relCategory.titles.map(title=>(
+                      <button key={title} onClick={()=>{
+                        onAddRel(person.id,relTarget.id,relCategory.id,relTitleA,title);
+                        setShowAddRel(false);setRelTarget(null);setRelCategory(null);setRelTitleA(null);
+                      }} style={{padding:"8px 16px",borderRadius:4,border:`1.5px solid ${relCategory.color}55`,background:relCategory.color+"12",color:relCategory.color,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{title}</button>
+                    ))}
+                    <button onClick={()=>{
+                      onAddRel(person.id,relTarget.id,relCategory.id,relTitleA,"");
+                      setShowAddRel(false);setRelTarget(null);setRelCategory(null);setRelTitleA(null);
+                    }} style={{padding:"8px 16px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.panel,color:th.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Skip</button>
+                  </div>
+                  <button onClick={()=>setRelTitleA(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
                 </div>
               )}
             </div>

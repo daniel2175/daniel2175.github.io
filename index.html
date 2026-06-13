@@ -275,14 +275,14 @@ function RelationshipPage({people,rels,th,isDark}){
 // ═══════════════════════════════════════════════════════════════════════════
 function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpenProfile}){
   const [showAdd,setShowAdd]=useState(false);
-  const [form,setForm]=useState({name:"",img:null,portrait:null,age:""});
+  const [form,setForm]=useState({name:"",img:null,portrait:null,age:"",occupation:""});
   const fRef=useRef(); const pRef=useRef();
   // readImg replaced by compressImg
 
   const add=()=>{
     if(!form.name.trim()) return;
-    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],age:form.age,birthday:"",height:"",personality:"",theme:"day"}]);
-    setForm({name:"",img:null,portrait:null,age:""});
+    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],age:form.age,occupation:form.occupation,birthday:"",height:"",personality:"",theme:"day"}]);
+    setForm({name:"",img:null,portrait:null,age:"",occupation:""});
     setShowAdd(false);
     showToast(`${form.name} moved in`);
   };
@@ -348,7 +348,8 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
                 </div>
               </div>
               <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Name..." style={{padding:"10px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:14,fontWeight:600,outline:"none",fontFamily:"inherit"}}/>
-              <input value={form.age} onChange={e=>setForm(f=>({...f,age:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Age" style={{padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              <input value={form.age} onChange={e=>setForm(f=>({...f,age:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Age" style={{padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%"}}/>
+                  <input value={form.occupation} onChange={e=>setForm(f=>({...f,occupation:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Occupation 職業" style={{padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%"}}/>
               <button onClick={add} disabled={!form.name.trim()} style={{padding:"11px",borderRadius:4,border:"none",background:form.name.trim()?th.accent:th.divider,color:form.name.trim()?"#fff":th.textMuted,fontSize:13,fontWeight:700,cursor:form.name.trim()?"pointer":"not-allowed",fontFamily:"inherit"}}>Move In</button>
             </div>
           </div>
@@ -550,7 +551,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
   const [newEvText,setNewEvText]=useState("");
   const msgEndRef=useRef(null);
 
-  const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",height:person.height||"",personality:person.personality||""});
+  const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",occupation:person.occupation||"",height:person.height||"",personality:person.personality||""});
   const iStyle={padding:"8px 10px",borderRadius:3,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",width:"100%"};
 
   const myRels=rels.filter(r=>r.a===person.id||r.b===person.id);
@@ -605,16 +606,16 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
         {/* ── Profile tab ── */}
         {tab==="info" && (
           <div>
-            {/* Full portrait */}
+            {/* Full portrait — no overlay, clean image */}
             <div style={{position:"relative",width:"100%",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
               {(person.portrait||person.img)
                 ? <img src={person.portrait||person.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                 : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72,color:th.textMuted}}>{person.name[0]}</div>}
-              <div style={{position:"absolute",bottom:0,left:0,right:0,height:"45%",background:`linear-gradient(to top,${th.bg}f0,transparent)`}}/>
-              <div style={{position:"absolute",bottom:16,left:16}}>
-                <div style={{fontSize:28,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
-                {person.age&&<div style={{fontSize:12,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
-              </div>
+            </div>
+            {/* Name + age below portrait */}
+            <div style={{padding:"14px 16px 0",display:"flex",alignItems:"baseline",gap:10}}>
+              <div style={{fontSize:26,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
+              {person.age&&<div style={{fontSize:13,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
             </div>
 
             {/* Extra photos row (up to 4) */}
@@ -678,11 +679,12 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                       <input value={f.age} onChange={e=>setF(x=>({...x,age:e.target.value}))} placeholder="Age" style={iStyle}/>
+                    <input value={f.occupation||""} onChange={e=>setF(x=>({...x,occupation:e.target.value}))} placeholder="Occupation 職業" style={iStyle}/>
                       <input value={f.height} onChange={e=>setF(x=>({...x,height:e.target.value}))} placeholder="Height" style={iStyle}/>
                       <input value={f.personality} onChange={e=>setF(x=>({...x,personality:e.target.value}))} placeholder="Personality" style={iStyle}/>
                     </div>
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{onUpdate(person.id,f);setEditing(false);}} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                      <button onClick={()=>{onUpdate(person.id,{...f});setEditing(false);}} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
                       <button onClick={()=>{onDelete(person.id);onBack();}} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
                     </div>
                   </div>
@@ -692,7 +694,8 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
               {/* Bio chips */}
               {(person.height||person.personality)&&!editing&&(
                 <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:16}}>
-                  {person.height&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>↕ {person.height}</span>}
+                  {person.occupation&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>💼 {person.occupation}</span>}
+              {person.height&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>↕ {person.height}</span>}
                   {person.personality&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"3px 8px"}}>✦ {person.personality}</span>}
                 </div>
               )}

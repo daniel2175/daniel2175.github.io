@@ -158,10 +158,10 @@ function PanelHeader({label,sub,color,th,right}){
 }
 function Avatar({p,size=44,round=false,th}){
   const radius = round ? "50%" : 5;
-  if(p.img) return <img src={p.img} style={{width:size,height:size,borderRadius:radius,objectFit:"cover",flexShrink:0}}/>;
+  if(p.img) return <img src={p.img} style={{width:size,height:size,minWidth:size,minHeight:size,borderRadius:radius,objectFit:"cover",flexShrink:0,display:"block"}}/>;
   const colors=["#C8920A","#B03898","#5830C8","#1860C0","#0888A8","#248858"];
   const bg=colors[p.id%colors.length];
-  return <div style={{width:size,height:size,borderRadius:radius,background:bg+"28",border:`1.5px solid ${bg}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.36,fontWeight:700,color:bg,flexShrink:0}}>{p.name[0]}</div>;
+  return <div style={{width:size,height:size,minWidth:size,minHeight:size,borderRadius:radius,background:bg+"28",border:`1.5px solid ${bg}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.36,fontWeight:700,color:bg,flexShrink:0}}>{p.name[0]}</div>;
 }
 
 function Overlay({children,onClose,align="center"}){
@@ -714,7 +714,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                       const col=relColor(rel.type,isDark); const def=relDef(rel.type);
                       return (
                         <div key={rel.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:64,position:"relative"}}>
-                          <div style={{borderRadius:"50%",padding:2,border:`2.5px solid ${col}`}}><Avatar p={other} size={48} round th={th}/></div>
+                          <div style={{borderRadius:"50%",overflow:"hidden",border:`2.5px solid ${col}`,flexShrink:0,width:52,height:52}}><Avatar p={other} size={48} round th={th}/></div>
                           <span style={{fontSize:10,fontWeight:700,color:th.text,textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{other.name}</span>
                           <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{(rel.a===person.id?rel.titleA:rel.titleB)||def?.zh}</span>
                           <button onClick={()=>onRemoveRel(rel.id)} style={{position:"absolute",top:-4,right:0,width:16,height:16,borderRadius:"50%",background:th.card,border:`1px solid ${th.cardBorder}`,color:th.textMuted,fontSize:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>

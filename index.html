@@ -545,6 +545,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
   const [editing,setEditing]=useState(false);
   const [showAddRel,setShowAddRel]=useState(false);
   const [relTarget,setRelTarget]=useState(null);
+  const [relCategory,setRelCategory]=useState(null);
   const [msgTarget,setMsgTarget]=useState(null); // person to message
   const [msgInput,setMsgInput]=useState("");
   const [newEvTarget,setNewEvTarget]=useState(null);
@@ -805,40 +806,69 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
 
       {/* Add relationship modal */}
       {showAddRel&&(
-        <Overlay onClose={()=>setShowAddRel(false)}>
+        <Overlay onClose={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}}>
           <div style={{width:"100%",maxWidth:340,background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",boxShadow:`0 16px 48px ${th.shadow}`}}>
-            <PanelHeader label={relTarget?"Choose Type":"Choose Resident"} th={th} right={<button onClick={()=>setShowAddRel(false)} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>}/>
-            <div style={{padding:"14px",maxHeight:"50dvh",overflowY:"auto"}}>
-              {!relTarget
-                ? <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
-                    {candidates.map(c=>{
-                      const ex=myRels.some(r=>r.a===c.id||r.b===c.id);
-                      return <div key={c.id} onClick={()=>setRelTarget(c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:60,cursor:"pointer",opacity:ex?0.45:1}}>
-                        <Avatar p={c} size={48} round th={th}/>
-                        <span style={{fontSize:10,fontWeight:600,color:th.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{c.name}</span>
-                        {ex&&<span style={{fontSize:8,color:th.textMuted}}>linked</span>}
-                      </div>;
-                    })}
-                    {candidates.length===0&&<div style={{textAlign:"center",padding:"16px",color:th.textMuted,fontSize:12,width:"100%"}}>No other residents.</div>}
+            <PanelHeader
+              label={!relTarget?"① Choose Person":!relCategory?"② Choose Category":"③ Choose Title"}
+              th={th}
+              right={<button onClick={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>}
+            />
+            <div style={{padding:"14px",maxHeight:"55dvh",overflowY:"auto"}}>
+              {!relTarget&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+                  {candidates.length===0&&<div style={{width:"100%",textAlign:"center",padding:"16px",color:th.textMuted,fontSize:12}}>No other residents.</div>}
+                  {candidates.map(c=>{
+                    const ex=myRels.some(r=>r.a===c.id||r.b===c.id);
+                    return <div key={c.id} onClick={()=>!ex&&setRelTarget(c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:60,cursor:ex?"default":"pointer",opacity:ex?0.4:1}}>
+                      <Avatar p={c} size={48} round th={th}/>
+                      <span style={{fontSize:10,fontWeight:600,color:th.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{c.name}</span>
+                      {ex&&<span style={{fontSize:8,color:th.textMuted}}>linked</span>}
+                    </div>;
+                  })}
+                </div>
+              )}
+              {relTarget&&!relCategory&&(
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                    <Avatar p={person} size={30} round th={th}/>
+                    <span style={{fontSize:11,color:th.textMuted}}>+</span>
+                    <Avatar p={relTarget} size={30} round th={th}/>
+                    <span style={{fontSize:12,fontWeight:700,color:th.text}}>{person.name} × {relTarget.name}</span>
                   </div>
-                : <div>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"8px 10px",background:th.panel,borderRadius:5}}>
-                      <Avatar p={person} size={32} round th={th}/>
-                      <span style={{fontSize:13,color:th.textMuted}}>+</span>
-                      <Avatar p={relTarget} size={32} round th={th}/>
-                      <span style={{fontSize:12,fontWeight:700,color:th.text}}>{person.name} × {relTarget.name}</span>
-                    </div>
-                    <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>☀️ Day</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-                      {REL_TYPES.day.map(t=><button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>)}
-                    </div>
-                    <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>🌙 Night</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                      {REL_TYPES.night.map(t=><button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>)}
-                    </div>
-                    <button onClick={()=>setRelTarget(null)} style={{marginTop:12,width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>☀️ Day</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {REL_TYPES.filter(t=>t.period==="day").map(t=>(
+                      <button key={t.id} onClick={()=>setRelCategory(t)} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${t.color}55`,background:t.color+"12",color:t.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
+                    ))}
                   </div>
-              }
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>🌙 Night</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {REL_TYPES.filter(t=>t.period==="night").map(t=>(
+                      <button key={t.id} onClick={()=>setRelCategory(t)} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${t.color}55`,background:t.color+"12",color:t.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
+                    ))}
+                  </div>
+                  <button onClick={()=>setRelTarget(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                </div>
+              )}
+              {relTarget&&relCategory&&(
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:relCategory.color,flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:relCategory.color}}>{relCategory.zh}</span>
+                    <span style={{fontSize:11,color:th.textMuted}}>{person.name} × {relTarget.name}</span>
+                  </div>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>{person.name} 的稱號</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {relCategory.titles.map(title=>(
+                      <button key={title} onClick={()=>{
+                        onAddRel(person.id,relTarget.id,relCategory.id,title);
+                        setShowAddRel(false);setRelTarget(null);setRelCategory(null);
+                      }} style={{padding:"8px 16px",borderRadius:4,border:`1.5px solid ${relCategory.color}55`,background:relCategory.color+"12",color:relCategory.color,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{title}</button>
+                    ))}
+                  </div>
+                  <button onClick={()=>setRelCategory(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                </div>
+              )}
             </div>
           </div>
         </Overlay>

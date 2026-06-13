@@ -312,10 +312,10 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
           {people.map(p=>(
             <div key={p.id} onClick={()=>onOpenProfile(p.id)} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",cursor:"pointer",boxShadow:`0 1px 4px ${th.shadow}`}}>
               <div style={{aspectRatio:"3/4",background:th.panel,overflow:"hidden"}}>
-                {(p.portrait||p.img)?<img src={p.portrait||p.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>}
+                {(() => { const photo = (isDark&&p.nightPortrait)||p.portrait||p.img; return photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>; })()}
               </div>
               <div style={{padding:"8px 10px"}}>
-                <div style={{fontSize:12,fontWeight:700,color:th.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                <div style={{fontSize:12,fontWeight:700,color:th.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(isDark&&p.nightName)||p.name}</div>
                 <div style={{fontSize:10,color:th.textMuted,marginTop:1}}>{p.age?`Age ${p.age}`:"—"}</div>
               </div>
             </div>

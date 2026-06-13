@@ -284,7 +284,7 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
 
   const add=()=>{
     if(!form.name.trim()) return;
-    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],age:form.age,occupation:form.occupation,birthday:"",height:"",personality:"",theme:"day"}]);
+    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],nightExtraPhotos:[],nightPortrait:null,nightName:"",age:form.age,occupation:form.occupation,birthday:"",height:"",personality:"",theme:"day",nightPortrait:null,nightName:"",nightExtraPhotos:[]}]);
     setForm({name:"",img:null,portrait:null,age:"",occupation:""});
     setShowAdd(false);
     showToast(`${form.name} moved in`);
@@ -553,7 +553,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
   const [newEvText,setNewEvText]=useState("");
   const msgEndRef=useRef(null);
 
-  const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",occupation:person.occupation||"",height:person.height||"",personality:person.personality||""});
+  const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",occupation:person.occupation||"",height:person.height||"",personality:person.personality||"",nightName:person.nightName||"",nightPortrait:person.nightPortrait||null});
   const iStyle={padding:"8px 10px",borderRadius:3,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",width:"100%"};
 
   const myRels=rels.filter(r=>r.a===person.id||r.b===person.id);
@@ -591,7 +591,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
             Back
           </button>
-          <span style={{flex:1,fontSize:15,fontWeight:800,color:th.text,textAlign:"center",marginRight:60}}>{person.name}</span>
+          <span style={{flex:1,fontSize:15,fontWeight:800,color:th.text,textAlign:"center",marginRight:60}}>{(isDark&&person.nightName)||person.name}</span>
           <button onClick={()=>{setEditing(v=>!v);setF({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",height:person.height||"",personality:person.personality||""});}} style={{padding:"5px 12px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.card,color:th.textSub,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{editing?"Done":"Edit"}</button>
         </div>
         {/* Tabs */}
@@ -609,25 +609,33 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
         {tab==="info" && (
           <div>
             {/* Full portrait — no overlay, clean image */}
-            <div style={{position:"relative",width:"100%",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
-              {(person.portrait||person.img)
-                ? <img src={person.portrait||person.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72,color:th.textMuted}}>{person.name[0]}</div>}
-            </div>
-            {/* Name + age below portrait */}
-            <div style={{padding:"14px 16px 0",display:"flex",alignItems:"baseline",gap:10}}>
-              <div style={{fontSize:26,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
-              {person.age&&<div style={{fontSize:13,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
-            </div>
-
-            {/* Extra photos row (up to 4) */}
             {(() => {
-              const extraPhotos = person.extraPhotos || [];
+              const displayPortrait = (isDark && person.nightPortrait) ? person.nightPortrait : (person.portrait || person.img);
+              const displayName = (isDark && person.nightName) ? person.nightName : person.name;
+              return (
+                <>
+                  <div style={{position:"relative",width:"100%",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
+                    {displayPortrait
+                      ? <img src={displayPortrait} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                      : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72,color:th.textMuted}}>{displayName[0]}</div>}
+                  </div>
+                  {/* Name + age below portrait */}
+                  <div style={{padding:"14px 16px 0",display:"flex",alignItems:"baseline",gap:10}}>
+                    <div style={{fontSize:26,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{displayName}</div>
+                    {person.age&&<div style={{fontSize:13,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Extra photos row (up to 4) — day and night are separate */}
+            {(() => {
+              const extraPhotos = isDark ? (person.nightExtraPhotos||[]) : (person.extraPhotos||[]);
               const slots = Array(4).fill(null).map((_,i)=>extraPhotos[i]||null);
               return (
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:3,padding:"3px"}}>
                   {slots.map((photo,i)=>{
-                    const inputId=`extra-photo-${person.id}-${i}`;
+                    const inputId=`extra-photo-${person.id}-${isDark?"n":"d"}-${i}`;
                     return (
                       <div key={i} style={{position:"relative",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
                         {photo
@@ -641,16 +649,16 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                             <input id={inputId} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
                               if(!e.target.files[0]) return;
                               compressImg(e.target.files[0],400,600).then(src=>{
-                                const newPhotos=[...extraPhotos];
-                                newPhotos[i]=src;
-                                onUpdate(person.id,{extraPhotos:newPhotos});
+                                const base = [...extraPhotos];
+                                base[i]=src;
+                                onUpdate(person.id, isDark ? {nightExtraPhotos:base} : {extraPhotos:base});
                               });
                             }}/>
                             {photo && (
                               <button onClick={()=>{
-                                const newPhotos=[...extraPhotos];
-                                newPhotos[i]=null;
-                                onUpdate(person.id,{extraPhotos:newPhotos.filter((p,j)=>j<4)});
+                                const base = [...extraPhotos];
+                                base[i]=null;
+                                onUpdate(person.id, isDark ? {nightExtraPhotos:base} : {extraPhotos:base});
                               }} style={{position:"absolute",top:3,right:3,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
                             )}
                           </>
@@ -689,6 +697,22 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                       <button onClick={()=>setEditing(false)} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:th.accent,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Done</button>
                       <button onClick={()=>{onDelete(person.id);onBack();}} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
                     </div>
+                    {/* Night mode overrides */}
+                    {isDark && (
+                      <div style={{marginTop:6,padding:"10px 12px",borderRadius:5,border:`1px solid ${th.accent}33`,background:th.accentDim}}>
+                        <div style={{fontSize:9,fontWeight:700,color:th.accent,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>🌙 Night Mode Overrides</div>
+                        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
+                          <label htmlFor="ep-night-portrait" style={{cursor:"pointer",flexShrink:0,width:40,height:54,borderRadius:4,overflow:"hidden",border:`1.5px dashed ${th.accent}66`,background:th.panel,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+                            {person.nightPortrait?<img src={person.nightPortrait} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:13,opacity:0.5}}>🌙</span>}
+                          </label>
+                          <input id="ep-night-portrait" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],600,900).then(src=>onUpdate(person.id,{nightPortrait:src}))}/>
+                          <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+                            <input value={person.nightName||""} onChange={e=>onUpdate(person.id,{nightName:e.target.value})} placeholder="Night name (optional)" style={{...iStyle,fontSize:12}}/>
+                            {person.nightPortrait&&<button onClick={()=>onUpdate(person.id,{nightPortrait:null})} style={{fontSize:9,color:th.red,background:"transparent",border:`1px solid ${th.red}44`,borderRadius:3,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",alignSelf:"flex-start"}}>Remove 🌙 photo</button>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Panel>
               )}

@@ -228,7 +228,7 @@ function RelationshipPage({people,rels,th,isDark}){
                 <g key={r.id}>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth="2" strokeLinecap="round" opacity="0.9"/>
                   <rect x={mx-18} y={my-8} width="36" height="14" rx="3" fill={th.card} stroke={col} strokeWidth="0.8"/>
-                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{r.title||relDef(r.type)?.zh}</text>
+                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{selNode===r.b?(r.title||relDef(r.type)?.zh):relDef(r.type)?.zh}</text>
                 </g>
               );
             })}
@@ -418,15 +418,12 @@ function App(){
     return ()=>{ clearInterval(poll); document.removeEventListener("visibilitychange",onVis); window.removeEventListener("focus",sync); window.removeEventListener("pageshow",sync); };
   },[]);
 
-  // Auto-save every 15 minutes
+  // Auto-save every 2 seconds
   useEffect(()=>{
     const interval=setInterval(async()=>{
       if(!loaded.current) return;
-      setSyncStatus("saving");
-      const ok=await sbSave({people,rels,events,messages});
-      setSyncStatus(ok?"saved":"error");
-      setTimeout(()=>setSyncStatus("idle"),2000);
-    },15*60*1000);
+      await sbSave({people,rels,events,messages});
+    },2000);
     return ()=>clearInterval(interval);
   },[people,rels,events,messages]);
 

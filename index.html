@@ -108,29 +108,32 @@ const T = {
   },
 };
 
-// ── Relationship types ────────────────────────────────────────────────────
-const REL_TYPES = {
-  day: [
-    { id:"family",    zh:"家人",     color:"#2563EB" },
-    { id:"lover",     zh:"情人",     color:"#EC4899" },
-    { id:"friend",    zh:"朋友",     color:"#1C1E22" },
-    { id:"classmate", zh:"同學",     color:"#1C1E22" },
-    { id:"colleague", zh:"同事",     color:"#1C1E22" },
-    { id:"mentor",    zh:"師生",     color:"#16A34A" },
-  ],
-  night: [
-    { id:"enemy",       zh:"仇人",     color:"#DC2626" },
-    { id:"masterslave", zh:"主奴",     color:"#9333EA" },
-    { id:"secretlover", zh:"秘密情人", color:"#EA8C20" },
-  ],
-};
-const ALL_REL = [...REL_TYPES.day, ...REL_TYPES.night];
-function relDef(typeId){ return ALL_REL.find(r=>r.id===typeId); }
-function relPeriod(typeId){ return REL_TYPES.day.some(r=>r.id===typeId) ? "day" : "night"; }
-// On dark bg, black lines are invisible — substitute light gray
+// ── Relationship types with titles ───────────────────────────────────────
+const REL_TYPES = [
+  { id:"family",      zh:"家人",     color:"#2563EB", period:"day",
+    titles:["丈夫","妻子","媽媽","爸爸","兒子","女兒","哥哥","姐姐","妹妹","弟弟"] },
+  { id:"lover",       zh:"情人",     color:"#EC4899", period:"day",
+    titles:["女朋友","男朋友"] },
+  { id:"friend",      zh:"朋友",     color:"#374151", period:"day",
+    titles:["朋友","閨密"] },
+  { id:"classmate",   zh:"同學",     color:"#374151", period:"day",
+    titles:["小學同學","國中同學","高中同學","大學同學"] },
+  { id:"colleague",   zh:"同事",     color:"#374151", period:"day",
+    titles:["老闆","主管","同事","下屬","前輩","秘書"] },
+  { id:"mentor",      zh:"師生",     color:"#16A34A", period:"day",
+    titles:["老師","學生"] },
+  { id:"enemy",       zh:"仇人",     color:"#DC2626", period:"night",
+    titles:["討厭"] },
+  { id:"masterslave", zh:"主奴",     color:"#9333EA", period:"night",
+    titles:["主人","僕人","奴隸","玩物"] },
+  { id:"secretlover", zh:"秘密情人", color:"#EA8C20", period:"night",
+    titles:["小三","偷情","砲友"] },
+];
+function relDef(typeId){ return REL_TYPES.find(r=>r.id===typeId); }
+function relPeriod(typeId){ return relDef(typeId)?.period??"day"; }
 function relColor(typeId, isDark){
-  const d = relDef(typeId); if(!d) return "#888";
-  if(isDark && d.color === "#1C1E22") return "#B8C0D0";
+  const d=relDef(typeId); if(!d) return "#888";
+  if(isDark && d.color==="#374151") return "#B8C0D0";
   return d.color;
 }
 
@@ -172,7 +175,7 @@ function Overlay({children,onClose,align="center"}){
 function RelationshipPage({people,rels,th,isDark}){
   const period = isDark ? "night" : "day";
   const visRels = rels.filter(r => relPeriod(r.type) === period);
-  const types = REL_TYPES[period];
+  const types = REL_TYPES.filter(t=>t.period===period);
   const [selNode,setSelNode]=useState(null);
 
   const W = 340;
@@ -225,7 +228,7 @@ function RelationshipPage({people,rels,th,isDark}){
                 <g key={r.id}>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth="2" strokeLinecap="round" opacity="0.9"/>
                   <rect x={mx-18} y={my-8} width="36" height="14" rx="3" fill={th.card} stroke={col} strokeWidth="0.8"/>
-                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{relDef(r.type)?.zh}</text>
+                  <text x={mx} y={my+2.5} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>{r.title||relDef(r.type)?.zh}</text>
                 </g>
               );
             })}
@@ -270,7 +273,8 @@ function RelationshipPage({people,rels,th,isDark}){
 function ResidentDetail({person,people,rels,th,isDark,onClose,onUpdate,onDelete,onAddRel,onRemoveRel}){
   const [editing,setEditing]=useState(false);
   const [showAddRel,setShowAddRel]=useState(false);
-  const [relTarget,setRelTarget]=useState(null); // chosen person for new relationship
+  const [relTarget,setRelTarget]=useState(null);
+  const [relCategory,setRelCategory]=useState(null); // chosen category
   const eRef=useRef(); const pRef2=useRef();
   const [f,setF]=useState({name:person.name,img:person.img,portrait:person.portrait||null,age:person.age||"",height:person.height||"",personality:person.personality||""});
 
@@ -374,49 +378,71 @@ function ResidentDetail({person,people,rels,th,isDark,onClose,onUpdate,onDelete,
         </div>
       </div>
 
-      {/* Add relationship modal */}
+      {/* Add relationship modal — 3 steps */}
       {showAddRel && (
-        <Overlay onClose={()=>setShowAddRel(false)}>
+        <Overlay onClose={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}}>
           <div style={{width:"100%",maxWidth:340,background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",boxShadow:`0 16px 48px ${th.shadow}`}}>
-            <PanelHeader label={relTarget?"Choose Type":"Choose Resident"} th={th} right={
-              <button onClick={()=>setShowAddRel(false)} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>
-            }/>
-            <div style={{padding:"14px",maxHeight:"50dvh",overflowY:"auto"}}>
-              {!relTarget ? (
-                candidates.length===0 ? <div style={{textAlign:"center",padding:"16px 0",color:th.textMuted,fontSize:12}}>No other residents.</div> :
+            <PanelHeader
+              label={!relTarget?"① Choose Person":!relCategory?"② Choose Category":"③ Choose Title"}
+              th={th}
+              right={<button onClick={()=>{setShowAddRel(false);setRelTarget(null);setRelCategory(null);}} style={{border:"none",background:"transparent",color:th.textMuted,fontSize:13,cursor:"pointer"}}>✕</button>}
+            />
+            <div style={{padding:"14px",maxHeight:"55dvh",overflowY:"auto"}}>
+              {!relTarget && (
                 <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+                  {candidates.length===0&&<div style={{width:"100%",textAlign:"center",padding:"16px",color:th.textMuted,fontSize:12}}>No other residents.</div>}
                   {candidates.map(c=>{
-                    const existing = myRels.some(r=>r.a===c.id||r.b===c.id);
+                    const ex=myRels.some(r=>r.a===c.id||r.b===c.id);
                     return (
-                      <div key={c.id} onClick={()=>setRelTarget(c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:60,cursor:"pointer",opacity:existing?0.45:1}}>
+                      <div key={c.id} onClick={()=>!ex&&setRelTarget(c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:60,cursor:ex?"default":"pointer",opacity:ex?0.4:1}}>
                         <Avatar p={c} size={48} round th={th}/>
-                        <span style={{fontSize:10,fontWeight:600,color:th.text,textAlign:"center",overflow:"hidden",textOverflowEllipsis:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{c.name}</span>
-                        {existing&&<span style={{fontSize:8,color:th.textMuted}}>linked</span>}
+                        <span style={{fontSize:10,fontWeight:600,color:th.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>{c.name}</span>
+                        {ex&&<span style={{fontSize:8,color:th.textMuted}}>linked</span>}
                       </div>
                     );
                   })}
                 </div>
-              ) : (
+              )}
+              {relTarget && !relCategory && (
                 <div>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"8px 10px",background:th.panel,borderRadius:5}}>
-                    <Avatar p={person} size={32} round th={th}/>
-                    <span style={{fontSize:13,color:th.textMuted}}>+</span>
-                    <Avatar p={relTarget} size={32} round th={th}/>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                    <Avatar p={person} size={30} round th={th}/>
+                    <span style={{fontSize:11,color:th.textMuted}}>+</span>
+                    <Avatar p={relTarget} size={30} round th={th}/>
                     <span style={{fontSize:12,fontWeight:700,color:th.text}}>{person.name} × {relTarget.name}</span>
                   </div>
-                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>☀️ Day</div>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>☀️ Day</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-                    {REL_TYPES.day.map(t=>(
-                      <button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
+                    {REL_TYPES.filter(t=>t.period==="day").map(t=>(
+                      <button key={t.id} onClick={()=>setRelCategory(t)} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${t.color}55`,background:t.color+"12",color:t.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
                     ))}
                   </div>
-                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>🌙 Night</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {REL_TYPES.night.map(t=>(
-                      <button key={t.id} onClick={()=>{onAddRel(person.id,relTarget.id,t.id);setShowAddRel(false);}} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${relColor(t.id,isDark)}55`,background:relColor(t.id,isDark)+"10",color:relColor(t.id,isDark),fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>🌙 Night</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {REL_TYPES.filter(t=>t.period==="night").map(t=>(
+                      <button key={t.id} onClick={()=>setRelCategory(t)} style={{padding:"7px 14px",borderRadius:4,border:`1.5px solid ${t.color}55`,background:t.color+"12",color:t.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.zh}</button>
                     ))}
                   </div>
-                  <button onClick={()=>setRelTarget(null)} style={{marginTop:12,width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                  <button onClick={()=>setRelTarget(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+                </div>
+              )}
+              {relTarget && relCategory && (
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"8px 10px",background:th.panel,borderRadius:5}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:relCategory.color,flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:relCategory.color}}>{relCategory.zh}</span>
+                    <span style={{fontSize:11,color:th.textMuted}}>{person.name} × {relTarget.name}</span>
+                  </div>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>{person.name} 的稱號</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                    {relCategory.titles.map(title=>(
+                      <button key={title} onClick={()=>{
+                        onAddRel(person.id,relTarget.id,relCategory.id,title);
+                        setShowAddRel(false);setRelTarget(null);setRelCategory(null);
+                      }} style={{padding:"8px 16px",borderRadius:4,border:`1.5px solid ${relCategory.color}55`,background:relCategory.color+"12",color:relCategory.color,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{title}</button>
+                    ))}
+                  </div>
+                  <button onClick={()=>setRelCategory(null)} style={{width:"100%",padding:"8px",borderRadius:4,border:`1px solid ${th.cardBorder}`,background:th.panel,color:th.textSub,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
                 </div>
               )}
             </div>
@@ -449,8 +475,8 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
     setRels(prev=>prev.filter(r=>r.a!==id&&r.b!==id));
     showToast("Resident removed");
   };
-  const addRel=(a,b,type)=>{
-    setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type}]);
+  const addRel=(a,b,type,title="")=>{
+    setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,title}]);
     showToast(`Relationship added: ${relDef(type)?.zh}`);
   };
   const removeRel=id=>setRels(prev=>prev.filter(r=>r.id!==id));
@@ -660,7 +686,7 @@ function App(){
           onBack={()=>setProfileId(null)}
           onUpdate={(id,u)=>setPeople(prev=>prev.map(p=>p.id===id?{...p,...u}:p))}
           onDelete={id=>{setPeople(prev=>prev.filter(p=>p.id!==id));setRels(prev=>prev.filter(r=>r.a!==id&&r.b!==id));setProfileId(null);}}
-          onAddRel={(a,b,type)=>setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type}])}
+          onAddRel={(a,b,type,title="")=>setRels(prev=>[...prev.filter(r=>!((r.a===a&&r.b===b)||(r.a===b&&r.b===a))),{id:RID++,a,b,type,title}])}
           onRemoveRel={id=>setRels(prev=>prev.filter(r=>r.id!==id))}
         />;
       })()}
@@ -827,7 +853,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
                         <div key={rel.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:64,position:"relative"}}>
                           <div style={{borderRadius:"50%",padding:2,border:`2.5px solid ${col}`}}><Avatar p={other} size={48} round th={th}/></div>
                           <span style={{fontSize:10,fontWeight:700,color:th.text,textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{other.name}</span>
-                          <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{def?.zh}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:col,background:col+"18",borderRadius:3,padding:"1px 7px"}}>{rel.title||def?.zh}</span>
                           <button onClick={()=>onRemoveRel(rel.id)} style={{position:"absolute",top:-4,right:0,width:16,height:16,borderRadius:"50%",background:th.card,border:`1px solid ${th.cardBorder}`,color:th.textMuted,fontSize:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
                         </div>
                       );

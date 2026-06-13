@@ -281,7 +281,7 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
 
   const add=()=>{
     if(!form.name.trim()) return;
-    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,age:form.age,birthday:"",height:"",personality:"",theme:"day"}]);
+    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],age:form.age,birthday:"",height:"",personality:"",theme:"day"}]);
     setForm({name:"",img:null,portrait:null,age:""});
     setShowAdd(false);
     showToast(`${form.name} moved in`);
@@ -605,17 +605,59 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
         {/* ── Profile tab ── */}
         {tab==="info" && (
           <div>
-            {/* Banner photo */}
-            <div style={{position:"relative",aspectRatio:"4/3",background:th.panel,overflow:"hidden"}}>
+            {/* Full portrait */}
+            <div style={{position:"relative",width:"100%",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
               {(person.portrait||person.img)
                 ? <img src={person.portrait||person.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                 : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72,color:th.textMuted}}>{person.name[0]}</div>}
-              <div style={{position:"absolute",bottom:0,left:0,right:0,height:"50%",background:`linear-gradient(to top,${th.bg}ee,transparent)`}}/>
-              <div style={{position:"absolute",bottom:14,left:16}}>
-                <div style={{fontSize:26,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
+              <div style={{position:"absolute",bottom:0,left:0,right:0,height:"45%",background:`linear-gradient(to top,${th.bg}f0,transparent)`}}/>
+              <div style={{position:"absolute",bottom:16,left:16}}>
+                <div style={{fontSize:28,fontWeight:800,color:th.text,letterSpacing:-0.5}}>{person.name}</div>
                 {person.age&&<div style={{fontSize:12,color:th.textSub,fontWeight:500}}>Age {person.age}</div>}
               </div>
             </div>
+
+            {/* Extra photos row (up to 4) */}
+            {(() => {
+              const extraPhotos = person.extraPhotos || [];
+              const slots = Array(4).fill(null).map((_,i)=>extraPhotos[i]||null);
+              return (
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:3,padding:"3px"}}>
+                  {slots.map((photo,i)=>{
+                    const inputId=`extra-photo-${person.id}-${i}`;
+                    return (
+                      <div key={i} style={{position:"relative",aspectRatio:"2/3",background:th.panel,overflow:"hidden"}}>
+                        {photo
+                          ? <img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          : <label htmlFor={editing?inputId:undefined} style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",cursor:editing?"pointer":"default",color:th.textMuted,fontSize:22}}>
+                              {editing?"＋":""}
+                            </label>
+                        }
+                        {editing && (
+                          <>
+                            <input id={inputId} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                              if(!e.target.files[0]) return;
+                              compressImg(e.target.files[0],400,600).then(src=>{
+                                const newPhotos=[...extraPhotos];
+                                newPhotos[i]=src;
+                                onUpdate(person.id,{extraPhotos:newPhotos});
+                              });
+                            }}/>
+                            {photo && (
+                              <button onClick={()=>{
+                                const newPhotos=[...extraPhotos];
+                                newPhotos[i]=null;
+                                onUpdate(person.id,{extraPhotos:newPhotos.filter((p,j)=>j<4)});
+                              }} style={{position:"absolute",top:3,right:3,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             <div style={{padding:"16px"}}>
               {/* Edit form */}

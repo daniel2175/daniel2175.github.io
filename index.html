@@ -438,7 +438,7 @@ function App(){
 
   // Force-save on page hide
   useEffect(()=>{
-    const save=()=>{ if(loaded.current) sbSave({people,rels,events,messages}); };
+    const save=()=>{ if(loaded.current) sbSave({people,rels,events,messages,houses,actions}); };
     const onVis=()=>{ if(document.visibilityState==="hidden") save(); };
     document.addEventListener("visibilitychange",onVis);
     window.addEventListener("pagehide",save);
@@ -1017,17 +1017,33 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
 // ═══════════════════════════════════════════════════════════════════════════
 let HID = 1;
 
-const HOUSE_ICONS = ["🏠","🏡","🏢","🏨","🏩","🛖","🏗️","🏰"];
+function PortraitThumb({p,size=56,th,isOwner=false,onClick,dimmed=false,showRemove=false}){
+  const photo=p.portrait||p.img;
+  const w=size, h=Math.round(size*4/3);
+  const ownerBorder="3px solid #FFFFFF";
+  const normalBorder=`2px solid ${th.cardBorder}`;
+  return (
+    <div onClick={onClick} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:onClick?"pointer":"default",opacity:dimmed?0.55:1,position:"relative"}}>
+      <div style={{width:w,height:h,borderRadius:6,overflow:"hidden",border:isOwner?ownerBorder:normalBorder,boxShadow:isOwner?"0 0 0 2px rgba(180,180,180,0.4)":"none",boxSizing:"border-box",flexShrink:0,background:th.panel,position:"relative"}}>
+        {photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:w*0.4,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>}
+        {showRemove&&<div style={{position:"absolute",inset:0,background:"rgba(180,30,30,0.45)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff"}}>✕</div>}
+      </div>
+      <span style={{fontSize:9,fontWeight:600,color:isOwner?th.accent:th.text,textAlign:"center",width:w+4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+    </div>
+  );
+}
 
 function FamilyPage({people,houses,setHouses,th,showToast,onOpenProfile}){
   const [showAdd,setShowAdd]=useState(false);
   const [editId,setEditId]=useState(null);
-  const [form,setForm]=useState({name:"",icon:"🏠",ownerId:null,note:""});
+  const [form,setForm]=useState({name:"",note:""});
+
+  const iStyle={padding:"8px 10px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
   const addHouse=()=>{
     if(!form.name.trim()) return;
-    setHouses(prev=>[...prev,{id:HID++,name:form.name.trim(),icon:form.icon,ownerId:form.ownerId,memberIds:[],note:form.note}]);
-    setForm({name:"",icon:"🏠",ownerId:null,note:""});
+    setHouses(prev=>[...prev,{id:HID++,name:form.name.trim(),ownerId:null,memberIds:[],note:form.note}]);
+    setForm({name:"",note:""});
     setShowAdd(false);
     showToast("House added");
   };
@@ -1037,8 +1053,6 @@ function FamilyPage({people,houses,setHouses,th,showToast,onOpenProfile}){
   const updateNote=(houseId,note)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:{...h,note}));
   const updateName=(houseId,name)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:{...h,name}));
 
-  const iStyle={padding:"8px 10px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
-
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       {houses.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:th.textMuted,fontSize:13}}>No houses yet.<br/><span style={{fontSize:11}}>Tap + to add one.</span></div>}
@@ -1047,78 +1061,74 @@ function FamilyPage({people,houses,setHouses,th,showToast,onOpenProfile}){
         const members=people.filter(p=>house.memberIds.includes(p.id));
         const owner=people.find(p=>p.id===house.ownerId);
         const isEdit=editId===house.id;
+        const nonMembers=people.filter(p=>!house.memberIds.includes(p.id));
         return (
           <div key={house.id} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden"}}>
-            {/* House header */}
-            <div style={{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${th.divider}`}}>
-              <span style={{fontSize:24}}>{house.icon}</span>
+            {/* Header */}
+            <div style={{padding:"11px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${th.divider}`,background:th.panel}}>
+              <span style={{fontSize:20}}>🏠</span>
               <div style={{flex:1}}>
                 {isEdit
-                  ? <input value={house.name} onChange={e=>updateName(house.id,e.target.value)} style={{...iStyle,fontSize:15,fontWeight:700,padding:"4px 8px"}}/>
-                  : <div style={{fontSize:15,fontWeight:700,color:th.text}}>{house.name}</div>
+                  ? <input value={house.name} onChange={e=>updateName(house.id,e.target.value)} style={{...iStyle,fontSize:14,fontWeight:700,padding:"3px 8px"}}/>
+                  : <div style={{fontSize:14,fontWeight:700,color:th.text}}>{house.name}</div>
                 }
-                {owner&&<div style={{fontSize:11,color:th.textMuted,marginTop:2}}>Owner: <span style={{color:th.accent,fontWeight:600}}>{owner.name}</span></div>}
+                {owner&&!isEdit&&<div style={{fontSize:10,color:th.textSub,marginTop:1}}>Owner: <span style={{color:th.accent,fontWeight:600}}>{owner.name}</span></div>}
               </div>
-              <button onClick={()=>setEditId(isEdit?null:house.id)} style={{padding:"4px 10px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{isEdit?"Done":"Edit"}</button>
-              <button onClick={()=>removeHouse(house.id)} style={{padding:"4px 8px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              <button onClick={()=>setEditId(isEdit?null:house.id)} style={{padding:"4px 10px",borderRadius:4,border:`1px solid ${th.divider}`,background:isEdit?th.accent:th.panel,color:isEdit?"#fff":th.textSub,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{isEdit?"Done":"Edit"}</button>
+              <button onClick={()=>{removeHouse(house.id);if(editId===house.id)setEditId(null);}} style={{padding:"4px 8px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
             </div>
 
-            {/* Members */}
-            <div style={{padding:"10px 14px"}}>
-              {members.length===0&&!isEdit&&<div style={{fontSize:11,color:th.textMuted,fontStyle:"italic"}}>No residents yet</div>}
-              <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:isEdit?10:0}}>
-                {members.map(p=>(
-                  <div key={p.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:isEdit?"pointer":"default",position:"relative"}} onClick={()=>isEdit&&toggleMember(house.id,p.id)}>
-                    <div style={{position:"relative"}}>
-                      <Avatar p={p} size={44} round th={th}/>
-                      {house.ownerId===p.id&&<div style={{position:"absolute",top:-4,right:-4,fontSize:12}}>👑</div>}
-                      {isEdit&&<div style={{position:"absolute",inset:0,borderRadius:"50%",background:"rgba(200,50,50,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:"#fff"}}>✕</div>}
+            {/* Members grid */}
+            <div style={{padding:"12px 14px"}}>
+              {members.length===0&&!isEdit&&<div style={{fontSize:11,color:th.textMuted,fontStyle:"italic"}}>No residents yet — tap Edit to add</div>}
+              {members.length>0&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:isEdit?14:0}}>
+                  {members.map(p=>(
+                    <div key={p.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:isEdit?4:0}}>
+                      <PortraitThumb p={p} size={56} th={th} isOwner={house.ownerId===p.id}
+                        onClick={isEdit?()=>toggleMember(house.id,p.id):undefined}
+                        showRemove={isEdit}/>
+                      {isEdit&&(
+                        <button onClick={e=>{e.stopPropagation();setOwner(house.id,p.id);}} style={{fontSize:8,padding:"2px 7px",borderRadius:3,border:`1px solid ${house.ownerId===p.id?th.accent:th.divider}`,background:house.ownerId===p.id?th.accent:th.panel,color:house.ownerId===p.id?"#fff":th.textSub,cursor:"pointer",fontFamily:"inherit",marginTop:2}}>
+                          {house.ownerId===p.id?"✓ Owner":"Set Owner"}
+                        </button>
+                      )}
                     </div>
-                    <span style={{fontSize:9,fontWeight:600,color:th.text,textAlign:"center",width:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                    {isEdit&&<button onClick={e=>{e.stopPropagation();setOwner(house.id,p.id);}} style={{fontSize:8,padding:"1px 6px",borderRadius:3,border:`1px solid ${th.accent}55`,background:house.ownerId===p.id?th.accent:th.accentDim,color:house.ownerId===p.id?"#fff":th.accent,cursor:"pointer",fontFamily:"inherit"}}>{house.ownerId===p.id?"Owner":"Set"}</button>}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
-              {/* Add members when editing */}
-              {isEdit && (
-                <div>
-                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Add Residents</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {people.filter(p=>!house.memberIds.includes(p.id)).map(p=>(
-                      <div key={p.id} onClick={()=>toggleMember(house.id,p.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer",opacity:0.6}}>
-                        <Avatar p={p} size={36} round th={th}/>
-                        <span style={{fontSize:9,color:th.textMuted,textAlign:"center",width:40,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                      </div>
+              {/* Add section when editing */}
+              {isEdit&&nonMembers.length>0&&(
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Add Residents</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                    {nonMembers.map(p=>(
+                      <PortraitThumb key={p.id} p={p} size={48} th={th} dimmed onClick={()=>toggleMember(house.id,p.id)}/>
                     ))}
-                    {people.filter(p=>!house.memberIds.includes(p.id)).length===0&&<span style={{fontSize:11,color:th.textMuted,fontStyle:"italic"}}>All residents added</span>}
-                  </div>
-                  {/* Note */}
-                  <div style={{marginTop:10}}>
-                    <textarea value={house.note||""} onChange={e=>updateNote(house.id,e.target.value)} placeholder="House notes..." rows={2} style={{...iStyle,resize:"none",fontSize:12,lineHeight:1.5}}/>
                   </div>
                 </div>
               )}
-              {!isEdit&&house.note&&<div style={{fontSize:11,color:th.textSub,marginTop:6,fontStyle:"italic"}}>{house.note}</div>}
+
+              {isEdit&&(
+                <textarea value={house.note||""} onChange={e=>updateNote(house.id,e.target.value)} placeholder="Notes..." rows={2} style={{...iStyle,resize:"none",fontSize:12,lineHeight:1.5}}/>
+              )}
+              {!isEdit&&house.note&&<div style={{fontSize:11,color:th.textSub,marginTop:8,fontStyle:"italic"}}>{house.note}</div>}
             </div>
           </div>
         );
       })}
 
-      {/* Add house button */}
-      {showAdd ? (
+      {showAdd?(
         <div style={{background:th.card,border:`1px solid ${th.accent}44`,borderRadius:8,padding:"14px"}}>
           <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>New House</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-            {HOUSE_ICONS.map(ic=><button key={ic} onClick={()=>setForm(f=>({...f,icon:ic}))} style={{fontSize:20,padding:"4px 8px",borderRadius:4,border:`1.5px solid ${form.icon===ic?th.accent:th.divider}`,background:form.icon===ic?th.accentDim:"transparent",cursor:"pointer"}}>{ic}</button>)}
-          </div>
           <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addHouse()} placeholder="House name..." style={{...iStyle,marginBottom:8}}/>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={addHouse} disabled={!form.name.trim()} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:form.name.trim()?th.accent:th.divider,color:form.name.trim()?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Add House</button>
+            <button onClick={addHouse} disabled={!form.name.trim()} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:form.name.trim()?th.accent:th.divider,color:form.name.trim()?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Add</button>
             <button onClick={()=>setShowAdd(false)} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
           </div>
         </div>
-      ) : (
+      ):(
         <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"12px",borderRadius:8,border:`1.5px dashed ${th.divider}`,background:"transparent",color:th.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>＋ Add House</button>
       )}
     </div>

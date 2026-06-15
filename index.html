@@ -792,17 +792,11 @@ function ResidentProfile({person,people,rels,setRels,events,setEvents,messages,s
 
         {/* ── 親密度 tab ── */}
         {tab==="interact" && (() => {
-          const dayBars = [
+          const bars = [
             { key:"love",      label:"心動值", cat:"愛情", color:"#F472B6", max:100 },
             { key:"friendship",label:"熟絡值", cat:"友誼", color:"#FBBF24", max:100 },
             { key:"family",    label:"信任值", cat:"家庭", color:"#60A5FA", max:100 },
           ];
-          const nightBars = [
-            { key:"slave",     label:"奴性值", cat:"訓練", color:"#A78BFA", max:100 },
-            { key:"affair",    label:"偷情值", cat:"背叛", color:"#F87171", max:100 },
-            { key:"seed",      label:"精量",   cat:"禁射", color:"#F0F0F0", max:100 },
-          ];
-          const bars = isDark ? [...dayBars, ...nightBars] : dayBars;
 
           const getIntimacy = (rel) => rel.intimacy || {};
           const setIntimacyVal = (relId, key, val) => {
@@ -837,8 +831,6 @@ function ResidentProfile({person,people,rels,setRels,events,setEvents,messages,s
                     <div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:10}}>
                       {bars.map(bar=>{
                         const val = intimacy[bar.key]??0;
-                        const isNightBar = nightBars.some(b=>b.key===bar.key);
-                        if(isNightBar && !isDark) return null;
                         return (
                           <div key={bar.key}>
                             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
@@ -851,7 +843,7 @@ function ResidentProfile({person,people,rels,setRels,events,setEvents,messages,s
                               </div>
                             </div>
                             <div style={{height:6,background:th.divider,borderRadius:3,overflow:"hidden"}}>
-                              <div style={{height:"100%",width:`${val}%`,background:bar.color,borderRadius:3,transition:"width 0.3s",boxShadow:bar.key==="seed"?`0 0 6px rgba(240,240,240,0.5)`:bar.key==="slave"?`0 0 6px ${bar.color}88`:undefined}}/>
+                              <div style={{height:"100%",width:`${val}%`,background:bar.color,borderRadius:3,transition:"width 0.3s"}}/>
                             </div>
                           </div>
                         );

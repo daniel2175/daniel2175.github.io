@@ -386,20 +386,21 @@ function App(){
 
   const loadCloud=async()=>{
     const cloud=await sbLoad();
-    if(cloud?.people){
-      setPeople(cloud.people);
-      setRels(cloud.rels||[]);
-      setEvents(cloud.events||[]);
-      setMessages(cloud.messages||[]);
-      setHouses(cloud.houses||[]);
-      setActions(cloud.actions||[]);
-      if(cloud.people.length){ const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1; }
-      if((cloud.rels||[]).length){ const mr=Math.max(...cloud.rels.map(r=>r.id??0),0); if(mr>=RID)RID=mr+1; }
-      if((cloud.events||[]).length){ const me=Math.max(...cloud.events.map(e=>e.id??0),0); if(me>=EVID)EVID=me+1; }
-      if((cloud.messages||[]).length){ const mm=Math.max(...cloud.messages.map(m=>m.id??0),0); if(mm>=MSGID)MSGID=mm+1; }
-      if((cloud.houses||[]).length){ const mh=Math.max(...cloud.houses.map(h=>h.id??0),0); if(mh>=HID)HID=mh+1; }
-      if((cloud.actions||[]).length){ const ma=Math.max(...cloud.actions.map(a=>a.id??0),0); if(ma>=AID)AID=ma+1; }
-    }
+    if(!cloud) return;
+    // Always set all arrays from cloud (don't gate on people existing)
+    setPeople(cloud.people||[]);
+    setRels(cloud.rels||[]);
+    setEvents(cloud.events||[]);
+    setMessages(cloud.messages||[]);
+    setHouses(cloud.houses||[]);
+    setActions(cloud.actions||[]);
+    // Sync ID counters
+    if((cloud.people||[]).length){ const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1; }
+    if((cloud.rels||[]).length){ const mr=Math.max(...cloud.rels.map(r=>r.id??0),0); if(mr>=RID)RID=mr+1; }
+    if((cloud.events||[]).length){ const me=Math.max(...cloud.events.map(e=>e.id??0),0); if(me>=EVID)EVID=me+1; }
+    if((cloud.messages||[]).length){ const mm=Math.max(...cloud.messages.map(m=>m.id??0),0); if(mm>=MSGID)MSGID=mm+1; }
+    if((cloud.houses||[]).length){ const mh=Math.max(...cloud.houses.map(h=>h.id??0),0); if(mh>=HID)HID=mh+1; }
+    if((cloud.actions||[]).length){ const ma=Math.max(...cloud.actions.map(a=>a.id??0),0); if(ma>=AID)AID=ma+1; }
   };
 
   // Initial load
@@ -431,7 +432,8 @@ function App(){
   useEffect(()=>{
     const interval=setInterval(async()=>{
       if(!loaded.current) return;
-      await sbSave({people,rels,events,messages,houses,actions});
+      const ok=await sbSave({people,rels,events,messages,houses,actions});
+      if(!ok){ setSyncStatus("error"); setTimeout(()=>setSyncStatus("idle"),3000); }
     },2000);
     return ()=>clearInterval(interval);
   },[people,rels,events,messages]);

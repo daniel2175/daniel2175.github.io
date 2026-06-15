@@ -504,7 +504,7 @@ function App(){
         const person = people.find(p=>p.id===profileId);
         if(!person) { setProfileId(null); return null; }
         return <ResidentProfile
-          person={person} people={people} rels={rels}
+          person={person} people={people} rels={rels} setRels={setRels}
           events={events} setEvents={setEvents}
           messages={messages} setMessages={setMessages}
           th={th} isDark={isDark}
@@ -550,7 +550,7 @@ function App(){
 // ═══════════════════════════════════════════════════════════════════════════
 let EVID=1, MSGID=1;
 
-function ResidentProfile({person,people,rels,events,setEvents,messages,setMessages,th,isDark,onBack,onUpdate,onDelete,onAddRel,onRemoveRel}){
+function ResidentProfile({person,people,rels,setRels,events,setEvents,messages,setMessages,th,isDark,onBack,onUpdate,onDelete,onAddRel,onRemoveRel}){
   const [tab,setTab]=useState("info"); // info | interact | messages
   const [editing,setEditing]=useState(false);
   const [showAddRel,setShowAddRel]=useState(false);
@@ -606,7 +606,7 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
         </div>
         {/* Tabs */}
         <div style={{display:"flex",borderTop:`1px solid ${th.divider}`}}>
-          {[{k:"info",label:"Profile"},{k:"interact",label:"互動"},{k:"messages",label:"手機訊息"}].map(t=>(
+          {[{k:"info",label:"Profile"},{k:"interact",label:"親密度"},{k:"messages",label:"手機訊息"}].map(t=>(
             <button key={t.k} onClick={()=>setTab(t.k)} style={{flex:1,padding:"9px 4px",border:"none",background:"transparent",color:tab===t.k?th.accent:th.textMuted,fontSize:11,fontWeight:tab===t.k?700:400,cursor:"pointer",fontFamily:"inherit",position:"relative",borderBottom:`2px solid ${tab===t.k?th.accent:"transparent"}`,letterSpacing:0.3}}>{t.label}</button>
           ))}
         </div>
@@ -790,57 +790,79 @@ function ResidentProfile({person,people,rels,events,setEvents,messages,setMessag
           </div>
         )}
 
-        {/* ── 互動 tab ── */}
-        {tab==="interact" && (
-          <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:10}}>
-            {/* Add event */}
-            <Panel th={th}>
-              <PanelHeader label="New Interaction" th={th}/>
-              <div style={{padding:"12px",display:"flex",flexDirection:"column",gap:8}}>
-                {/* Pick person */}
-                <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-                  {candidates.map(c=>(
-                    <div key={c.id} onClick={()=>setNewEvTarget(t=>t?.id===c.id?null:c)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",flexShrink:0}}>
-                      <div style={{borderRadius:"50%",padding:2,border:`2px solid ${newEvTarget?.id===c.id?th.accent:th.cardBorder}`,transition:"border-color 0.15s"}}>
-                        <Avatar p={c} size={38} round th={th}/>
-                      </div>
-                      <span style={{fontSize:9,fontWeight:600,color:newEvTarget?.id===c.id?th.accent:th.textMuted,width:44,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
-                    </div>
-                  ))}
-                  {candidates.length===0&&<span style={{fontSize:12,color:th.textMuted}}>Add more residents first</span>}
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <input value={newEvText} onChange={e=>setNewEvText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEvent()} placeholder={newEvTarget?`What happened with ${newEvTarget.name}?`:"Select someone first..."} style={{flex:1,padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-                  <button onClick={addEvent} disabled={!newEvText.trim()||!newEvTarget} style={{padding:"9px 14px",borderRadius:4,border:"none",background:newEvText.trim()&&newEvTarget?th.accent:th.divider,color:newEvText.trim()&&newEvTarget?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Log</button>
-                </div>
-              </div>
-            </Panel>
+        {/* ── 親密度 tab ── */}
+        {tab==="interact" && (() => {
+          const dayBars = [
+            { key:"love",      label:"心動值", cat:"愛情", color:"#F472B6", max:100 },
+            { key:"friendship",label:"熟絡值", cat:"友誼", color:"#FBBF24", max:100 },
+            { key:"family",    label:"信任值", cat:"家庭", color:"#60A5FA", max:100 },
+          ];
+          const nightBars = [
+            { key:"slave",     label:"奴性值", cat:"訓練", color:"#A78BFA", max:100 },
+            { key:"affair",    label:"偷情值", cat:"背叛", color:"#F87171", max:100 },
+            { key:"seed",      label:"精量",   cat:"禁射", color:"#F0F0F0", max:100 },
+          ];
+          const bars = isDark ? [...dayBars, ...nightBars] : dayBars;
 
-            {/* Event feed */}
-            {myEvents.length===0
-              ? <div style={{textAlign:"center",padding:"32px",color:th.textMuted,fontSize:13}}>No interactions logged yet.</div>
-              : myEvents.map(ev=>{
-                  const otherId=ev.a===person.id?ev.b:ev.a;
-                  const other=people.find(p=>p.id===otherId);
-                  const isMe=ev.a===person.id;
-                  return (
-                    <div key={ev.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"10px 12px",background:th.card,borderRadius:8,border:`1px solid ${th.cardBorder}`}}>
-                      <Avatar p={isMe?person:other||{id:0,name:"?"}} size={36} round th={th}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:11,color:th.textMuted,marginBottom:3}}>
-                          <span style={{fontWeight:700,color:th.text}}>{isMe?person.name:other?.name}</span>
-                          {other&&<span> {isMe?"→":"←"} <span style={{fontWeight:700,color:th.accent}}>{isMe?other.name:person.name}</span></span>}
-                        </div>
-                        <div style={{fontSize:13,color:th.text,lineHeight:1.5}}>{ev.text}</div>
-                        <div style={{fontSize:10,color:th.textMuted,marginTop:4}}>{new Date(ev.ts).toLocaleString()}</div>
+          const getIntimacy = (rel) => rel.intimacy || {};
+          const setIntimacyVal = (relId, key, val) => {
+            setRels(prev=>prev.map(r=>r.id!==relId?r:{...r,intimacy:{...r.intimacy,[key]:Math.max(0,Math.min(100,val))}}));
+          };
+
+          if(known.length===0) return (
+            <div style={{padding:"32px",textAlign:"center",color:th.textMuted,fontSize:13}}>
+              No relationships yet.<br/><span style={{fontSize:11}}>Add relationships in the Profile tab.</span>
+            </div>
+          );
+
+          return (
+            <div style={{padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
+              {known.map(({rel,other})=>{
+                const intimacy = getIntimacy(rel);
+                const relCol = relColor(rel.type, isDark);
+                const def = relDef(rel.type);
+                return (
+                  <div key={rel.id} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden"}}>
+                    {/* Person header */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:th.panel,borderBottom:`1px solid ${th.divider}`}}>
+                      <div style={{borderRadius:"50%",overflow:"hidden",border:`2px solid ${relCol}`,width:38,height:38,flexShrink:0}}>
+                        <Avatar p={other} size={34} round th={th}/>
                       </div>
-                      <button onClick={()=>setEvents(prev=>prev.filter(x=>x.id!==ev.id))} style={{padding:"3px 6px",borderRadius:3,border:"none",background:"transparent",color:th.textMuted,fontSize:11,cursor:"pointer"}}>✕</button>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:700,color:th.text}}>{other.name}</div>
+                        <div style={{fontSize:10,color:relCol,fontWeight:600}}>{def?.zh} · {rel.titleA||rel.titleB||""}</div>
+                      </div>
                     </div>
-                  );
-                })
-            }
-          </div>
-        )}
+                    {/* Bars */}
+                    <div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                      {bars.map(bar=>{
+                        const val = intimacy[bar.key]??0;
+                        const isNightBar = nightBars.some(b=>b.key===bar.key);
+                        if(isNightBar && !isDark) return null;
+                        return (
+                          <div key={bar.key}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                              <span style={{fontSize:9,color:bar.color,fontWeight:700,letterSpacing:0.5,width:28}}>{bar.cat}</span>
+                              <span style={{fontSize:9,color:th.textMuted,flex:1}}>{bar.label}</span>
+                              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                                <button onClick={()=>setIntimacyVal(rel.id,bar.key,val-10)} style={{width:20,height:20,borderRadius:3,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit",lineHeight:1}}>−</button>
+                                <span style={{fontSize:11,fontWeight:700,color:bar.color,width:28,textAlign:"center"}}>{val}</span>
+                                <button onClick={()=>setIntimacyVal(rel.id,bar.key,val+10)} style={{width:20,height:20,borderRadius:3,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit",lineHeight:1}}>＋</button>
+                              </div>
+                            </div>
+                            <div style={{height:6,background:th.divider,borderRadius:3,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${val}%`,background:bar.color,borderRadius:3,transition:"width 0.3s",boxShadow:bar.key==="seed"?`0 0 6px rgba(240,240,240,0.5)`:bar.key==="slave"?`0 0 6px ${bar.color}88`:undefined}}/>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* ── 手機訊息 tab ── */}
         {tab==="messages" && (

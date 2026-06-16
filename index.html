@@ -273,14 +273,14 @@ function RelationshipPage({people,rels,th,isDark}){
 // ═══════════════════════════════════════════════════════════════════════════
 function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpenProfile}){
   const [showAdd,setShowAdd]=useState(false);
-  const [form,setForm]=useState({name:"",img:null,portrait:null,age:"",occupation:""});
+  const [form,setForm]=useState({name:"",img:null,portrait:null,age:"",occupation:"",gender:""});
   const fRef=useRef(); const pRef=useRef();
   // readImg replaced by compressImg
 
   const add=()=>{
     if(!form.name.trim()) return;
-    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],nightExtraPhotos:[],nightPortrait:null,nightName:"",age:form.age,occupation:form.occupation,birthday:"",height:"",personality:"",bio:"",nightBio:"",theme:"day",nightPortrait:null,nightName:"",nightExtraPhotos:[]}]);
-    setForm({name:"",img:null,portrait:null,age:"",occupation:""});
+    setPeople(prev=>[...prev,{id:NID++,name:form.name.trim(),img:form.img,portrait:form.portrait,extraPhotos:[],nightExtraPhotos:[],nightPortrait:null,nightName:"",age:form.age,occupation:form.occupation,gender:form.gender,birthday:"",height:"",personality:"",bio:"",nightBio:"",theme:"day"}]);
+    setForm({name:"",img:null,portrait:null,age:"",occupation:"",gender:""});
     setShowAdd(false);
     showToast(`${form.name} moved in`);
   };
@@ -310,7 +310,7 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
                 {(() => { const photo = (isDark&&p.nightPortrait)||p.portrait||p.img; return photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>; })()}
               </div>
               <div style={{padding:"8px 10px"}}>
-                <div style={{fontSize:12,fontWeight:700,color:th.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(isDark&&p.nightName)||p.name}</div>
+                <div style={{fontSize:12,fontWeight:700,color:th.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(isDark&&p.nightName)||p.name}{p.gender&&<span style={{fontSize:10,marginLeft:4,color:p.gender==="male"?"#60A5FA":"#F472B6"}}>{p.gender==="male"?"♂":"♀"}</span>}</div>
                 <div style={{fontSize:10,color:th.textMuted,marginTop:1}}>{p.age?`Age ${p.age}`:"—"}</div>
               </div>
             </div>
@@ -348,8 +348,12 @@ function ResidentsPage({people,setPeople,rels,setRels,th,isDark,showToast,onOpen
               <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Name..." style={{padding:"10px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:14,fontWeight:600,outline:"none",fontFamily:"inherit"}}/>
               <input value={form.age} onChange={e=>setForm(f=>({...f,age:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Age" style={{padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%"}}/>
                   <input value={form.occupation} onChange={e=>setForm(f=>({...f,occupation:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Occupation 職業" style={{padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%"}}/>
+              <div style={{display:"flex",gap:8}}>
+                {[{val:"male",label:"♂ 男性"},{val:"female",label:"♀ 女性"}].map(g=>(
+                  <button key={g.val} onClick={()=>setForm(f=>({...f,gender:f.gender===g.val?"":g.val}))} style={{flex:1,padding:"9px",borderRadius:4,border:`1.5px solid ${form.gender===g.val?th.accent:th.divider}`,background:form.gender===g.val?th.accentDim:th.panel,color:form.gender===g.val?th.accent:th.textSub,fontSize:13,fontWeight:form.gender===g.val?700:400,cursor:"pointer",fontFamily:"inherit"}}>{g.label}</button>
+                ))}
+              </div>
               <button onClick={add} disabled={!form.name.trim()} style={{padding:"11px",borderRadius:4,border:"none",background:form.name.trim()?th.accent:th.divider,color:form.name.trim()?"#fff":th.textMuted,fontSize:13,fontWeight:700,cursor:form.name.trim()?"pointer":"not-allowed",fontFamily:"inherit"}}>Move In</button>
-            </div>
           </div>
         </Overlay>
       )}
@@ -631,7 +635,7 @@ function ResidentProfile({person,people,rels,setRels,events,setEvents,messages,s
                   </div>
                   {/* Name + age + bio all on one line */}
                   <div style={{padding:"12px 16px 0",display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-                    <div style={{fontSize:24,fontWeight:800,color:th.text,letterSpacing:-0.5,flexShrink:0}}>{displayName}</div>
+                    <div style={{fontSize:24,fontWeight:800,color:th.text,letterSpacing:-0.5,flexShrink:0,display:"flex",alignItems:"baseline",gap:6}}>{displayName}{person.gender&&<span style={{fontSize:16,color:person.gender==="male"?"#60A5FA":"#F472B6"}}>{person.gender==="male"?"♂":"♀"}</span>}</div>
                     {person.age&&<span style={{fontSize:12,color:th.textSub,fontWeight:500,flexShrink:0}}>Age {person.age}</span>}
                     {person.occupation&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"2px 7px",flexShrink:0}}>💼 {person.occupation}</span>}
                     {person.height&&<span style={{fontSize:11,color:th.tagText,background:th.tag,borderRadius:3,padding:"2px 7px",flexShrink:0}}>↕ {person.height}</span>}

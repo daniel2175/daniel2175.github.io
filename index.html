@@ -374,6 +374,7 @@ function App(){
   const [messages,setMessages]=useState([]);
   const [houses,setHouses]=useState([]);
   const [actions,setActions]=useState([]);
+  const [locations,setLocations]=useState([]);
   const [profileId,setProfileId]=useState(null); // full-screen profile
   const [appReady,setAppReady]=useState(false);
   const [splashFading,setSplashFading]=useState(false);
@@ -383,7 +384,7 @@ function App(){
   const loaded=useRef(false);
   // Always keep a ref to latest state so saves never use stale closures
   const latestState=useRef({people,rels,events,messages,houses,actions});
-  useEffect(()=>{ latestState.current={people,rels,events,messages,houses,actions}; },[people,rels,events,messages,houses,actions]);
+  useEffect(()=>{ latestState.current={people,rels,events,messages,houses,actions,locations}; },[people,rels,events,messages,houses,actions]);
   const SPLASH="data:image/jpeg;base64,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";
 
   const loadCloud=async()=>{
@@ -396,6 +397,7 @@ function App(){
     setMessages(cloud.messages||[]);
     setHouses(cloud.houses||[]);
     setActions(cloud.actions||[]);
+    setLocations(cloud.locations||[]);
     // Sync ID counters
     if((cloud.people||[]).length){ const mp=Math.max(...cloud.people.map(p=>p.id??0),0); if(mp>=NID)NID=mp+1; }
     if((cloud.rels||[]).length){ const mr=Math.max(...cloud.rels.map(r=>r.id??0),0); if(mr>=RID)RID=mr+1; }
@@ -403,6 +405,7 @@ function App(){
     if((cloud.messages||[]).length){ const mm=Math.max(...cloud.messages.map(m=>m.id??0),0); if(mm>=MSGID)MSGID=mm+1; }
     if((cloud.houses||[]).length){ const mh=Math.max(...cloud.houses.map(h=>h.id??0),0); if(mh>=HID)HID=mh+1; }
     if((cloud.actions||[]).length){ const ma=Math.max(...cloud.actions.map(a=>a.id??0),0); if(ma>=AID)AID=ma+1; }
+    if((cloud.locations||[]).length){ const ml=Math.max(...cloud.locations.map(l=>l.id??0),0); if(ml>=LID)LID=ml+1; }
   };
 
   // Initial load
@@ -525,7 +528,7 @@ function App(){
         {page==="relationship"&&<RelationshipPage people={people} rels={rels} th={th} isDark={isDark}/>}
         {page==="residents"&&<ResidentsPage people={people} setPeople={setPeople} rels={rels} setRels={setRels} th={th} isDark={isDark} showToast={showToast} onOpenProfile={setProfileId}/>}
         {page==="family"&&<FamilyPage people={people} houses={houses} setHouses={setHouses} th={th} showToast={showToast} onOpenProfile={setProfileId}/>}
-        {page==="actions"&&<ActionsPage people={people} actions={actions} setActions={setActions} th={th} showToast={showToast}/>}
+        {page==="actions"&&<ActionsPage people={people} actions={actions} setActions={setActions} locations={locations} setLocations={setLocations} th={th} isDark={isDark} showToast={showToast}/>}
         <div style={{height:8}}/>
       </div>
 
@@ -1150,131 +1153,161 @@ function FamilyPage({people,houses,setHouses,th,showToast,onOpenProfile}){
 // ═══════════════════════════════════════════════════════════════════════════
 // ACTIONS PAGE
 // ═══════════════════════════════════════════════════════════════════════════
-let AID = 1;
+let AID = 1, LID = 1;
 
-const LOCATIONS = ["餐廳","咖啡廳","公司","公園","超市","快餐店","酒吧","學校","電影院","健身房","圖書館","海邊","商場","家","醫院","夜店"];
-const SCENARIOS = ["約會","喝咖啡","開會","散步","出遊","買菜","做菜","購物","聚會","工作","學習","慶生","運動","看電影","談判","密謀"];
-const LOC_EMOJI = {"餐廳":"🍽️","咖啡廳":"☕","公司":"🏢","公園":"🌳","超市":"🛒","快餐店":"🍔","酒吧":"🍺","學校":"📚","電影院":"🎬","健身房":"💪","圖書館":"📖","海邊":"🌊","商場":"🛍️","家":"🏠","醫院":"🏥","夜店":"🎵"};
-const SCN_EMOJI = {"約會":"💕","喝咖啡":"☕","開會":"💼","散步":"🚶","出遊":"✈️","買菜":"🥦","做菜":"👨‍🍳","購物":"🛍️","聚會":"🎉","工作":"💻","學習":"📝","慶生":"🎂","運動":"⚽","看電影":"🎬","談判":"🤝","密謀":"🤫"};
+const SCENARIOS = ["約會","喝咖啡","開會","散步","出遊","買菜","做菜","購物","聚會","工作","學習","慶生","運動","看電影","談判","密謀","吃飯","喝酒","打架","跟蹤"];
+const SCN_EMOJI = {"約會":"💕","喝咖啡":"☕","開會":"💼","散步":"🚶","出遊":"✈️","買菜":"🥦","做菜":"👨‍🍳","購物":"🛍️","聚會":"🎉","工作":"💻","學習":"📝","慶生":"🎂","運動":"⚽","看電影":"🎬","談判":"🤝","密謀":"🤫","吃飯":"🍽️","喝酒":"🍺","打架":"👊","跟蹤":"👣"};
 
-function ActionsPage({people,actions,setActions,th,showToast}){
-  const [step,setStep]=useState(null); // null | "location" | "scenario" | "members"
-  const [draft,setDraft]=useState({location:"",scenario:"",memberIds:[]});
+function ActionsPage({people,actions,setActions,locations,setLocations,th,isDark,showToast}){
+  const [selLoc,setSelLoc]=useState(null);
+  const [showCreate,setShowCreate]=useState(false);
+  const [newForm,setNewForm]=useState({name:"",img:null,nightImg:null});
+  const [selMembers,setSelMembers]=useState([]);
+  const [selScenario,setSelScenario]=useState("");
+  const iStyle={padding:"9px 12px",borderRadius:4,background:th.panel,border:`1px solid ${th.divider}`,color:th.text,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
-  const startNew=()=>{ setDraft({location:"",scenario:"",memberIds:[]}); setStep("location"); };
-  const removeAction=id=>{ setActions(prev=>prev.filter(a=>a.id!==id)); showToast("Action removed"); };
-  const toggleMember=pid=>setDraft(d=>({...d,memberIds:d.memberIds.includes(pid)?d.memberIds.filter(x=>x!==pid):[...d.memberIds,pid]}));
-  const confirm=()=>{
-    if(!draft.location||!draft.scenario||draft.memberIds.length===0) return;
-    setActions(prev=>[...prev,{id:AID++,...draft,ts:Date.now()}]);
-    showToast(`Action started: ${draft.scenario} @ ${draft.location}`);
-    setStep(null);
+  const addLocation=()=>{
+    if(!newForm.name.trim()) return;
+    setLocations(prev=>[...prev,{id:LID++,name:newForm.name.trim(),img:newForm.img,nightImg:newForm.nightImg}]);
+    setNewForm({name:"",img:null,nightImg:null});
+    setShowCreate(false);
+    showToast("Location created");
+  };
+  const removeLocation=id=>{setLocations(prev=>prev.filter(l=>l.id!==id));setActions(prev=>prev.filter(a=>a.locationId!==id));};
+  const startScene=()=>{
+    if(!selLoc||selMembers.length===0||!selScenario) return;
+    setActions(prev=>[...prev,{id:AID++,locationId:selLoc.id,locationName:selLoc.name,scenario:selScenario,memberIds:selMembers,ts:Date.now()}]);
+    showToast(`${selScenario} @ ${selLoc.name}`);
+    setSelLoc(null);setSelMembers([]);setSelScenario("");
   };
 
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {/* Active actions */}
-      {actions.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:th.textMuted,fontSize:13}}>No active actions.<br/><span style={{fontSize:11}}>Assign characters to a scene below.</span></div>}
-
-      {actions.map(action=>{
-        const members=people.filter(p=>action.memberIds.includes(p.id));
-        return (
-          <div key={action.id} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden"}}>
-            {/* Scene header */}
-            <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,background:th.panel,borderBottom:`1px solid ${th.divider}`}}>
-              <span style={{fontSize:20}}>{LOC_EMOJI[action.location]||"📍"}</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:th.text}}>{action.location}</div>
-                <div style={{fontSize:12,color:th.accent,fontWeight:600}}>{SCN_EMOJI[action.scenario]||"▶"} {action.scenario}</div>
-              </div>
-              <div style={{fontSize:10,color:th.textMuted}}>{new Date(action.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
-              <button onClick={()=>removeAction(action.id)} style={{padding:"4px 8px",borderRadius:4,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-            </div>
-            {/* Members */}
-            <div style={{padding:"12px 14px",display:"flex",flexWrap:"wrap",gap:10}}>
-              {members.map(p=>(
-                <div key={p.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Avatar p={p} size={44} round th={th}/>
-                  <span style={{fontSize:9,fontWeight:600,color:th.text,textAlign:"center",width:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+  if(selLoc){
+    const photo=isDark?(selLoc.nightImg||selLoc.img):selLoc.img;
+    return (
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{position:"relative",width:"100%",aspectRatio:"16/9",borderRadius:8,overflow:"hidden",background:th.panel}}>
+          {photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>📍</div>}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.65),transparent 50%)"}}/>
+          <button onClick={()=>{setSelLoc(null);setSelMembers([]);setSelScenario("");}} style={{position:"absolute",top:10,left:10,padding:"5px 12px",borderRadius:4,background:"rgba(0,0,0,0.55)",border:"none",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
+          <div style={{position:"absolute",bottom:12,left:14}}><div style={{fontSize:20,fontWeight:800,color:"#fff",textShadow:"0 1px 8px rgba(0,0,0,0.7)"}}>{selLoc.name}</div></div>
+        </div>
+        <div style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,padding:"12px 14px"}}>
+          <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Select Characters</div>
+          {people.length===0?<div style={{textAlign:"center",padding:"16px",color:th.textMuted,fontSize:12}}>No residents yet</div>:
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {people.map(p=>{
+              const sel=selMembers.includes(p.id);
+              const photo2=p.portrait||p.img;
+              const w=44,h=64;
+              return (
+                <div key={p.id} onClick={()=>setSelMembers(prev=>sel?prev.filter(x=>x!==p.id):[...prev,p.id])} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}}>
+                  <div style={{width:w,height:h,borderRadius:5,overflow:"hidden",border:`2.5px solid ${sel?th.accent:th.cardBorder}`,boxShadow:sel?`0 0 0 2px ${th.accent}44`:"none",transition:"all 0.15s"}}>
+                    {photo2?<img src={photo2} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",background:th.panel,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:th.textMuted}}>{p.name[0]}</div>}
+                  </div>
+                  <span style={{fontSize:9,fontWeight:sel?700:400,color:sel?th.accent:th.textMuted,textAlign:"center",width:w+4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* New action button */}
-      {!step&&<button onClick={startNew} style={{width:"100%",padding:"12px",borderRadius:8,border:`1.5px dashed ${th.divider}`,background:"transparent",color:th.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>＋ New Action</button>}
-
-      {/* Step modal */}
-      {step && (
-        <div style={{background:th.card,border:`1px solid ${th.accent}44`,borderRadius:8,overflow:"hidden"}}>
-          {/* Step indicator */}
-          <div style={{display:"flex",background:th.panel,borderBottom:`1px solid ${th.divider}`}}>
-            {["location","scenario","members"].map((s,i)=>(
-              <div key={s} style={{flex:1,padding:"8px 4px",textAlign:"center",fontSize:9,fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",color:step===s?th.accent:th.textMuted,borderBottom:`2px solid ${step===s?th.accent:"transparent"}`,cursor:"pointer"}} onClick={()=>{if(i===1&&!draft.location)return;if(i===2&&!draft.scenario)return;setStep(s);}}>
-                {i+1}. {s==="location"?"Location":s==="scenario"?"Scenario":"Characters"}
-              </div>
+              );
+            })}
+          </div>}
+        </div>
+        <div style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,padding:"12px 14px"}}>
+          <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Select Scenario</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {SCENARIOS.map(s=>(
+              <button key={s} onClick={()=>setSelScenario(s===selScenario?"":s)} style={{padding:"7px 13px",borderRadius:5,border:`1.5px solid ${s===selScenario?th.accent:th.divider}`,background:s===selScenario?th.accentDim:th.panel,color:s===selScenario?th.accent:th.text,fontSize:12,fontWeight:s===selScenario?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+                {SCN_EMOJI[s]||"▶"} {s}
+              </button>
             ))}
           </div>
+        </div>
+        <button onClick={startScene} disabled={selMembers.length===0||!selScenario} style={{padding:"12px",borderRadius:6,border:"none",background:selMembers.length>0&&selScenario?th.accent:th.divider,color:selMembers.length>0&&selScenario?"#fff":th.textMuted,fontSize:14,fontWeight:700,cursor:selMembers.length>0&&selScenario?"pointer":"not-allowed",fontFamily:"inherit"}}>
+          Start Scene{selMembers.length>0?` (${selMembers.length})`:""}{selScenario?` · ${selScenario}`:""}
+        </button>
+      </div>
+    );
+  }
 
-          <div style={{padding:"14px"}}>
-            {/* Step 1: Location */}
-            {step==="location"&&(
-              <div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {LOCATIONS.map(loc=>(
-                    <button key={loc} onClick={()=>{setDraft(d=>({...d,location:loc}));setStep("scenario");}} style={{padding:"8px 14px",borderRadius:6,border:`1.5px solid ${draft.location===loc?th.accent:th.divider}`,background:draft.location===loc?th.accentDim:th.panel,color:draft.location===loc?th.accent:th.text,fontSize:13,fontWeight:draft.location===loc?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
-                      <span>{LOC_EMOJI[loc]||"📍"}</span>{loc}
-                    </button>
-                  ))}
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {actions.length>0&&(
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Active Scenes</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {actions.map(action=>{
+              const loc=locations.find(l=>l.id===action.locationId);
+              const members=people.filter(p=>action.memberIds.includes(p.id));
+              const photo=isDark?(loc?.nightImg||loc?.img):loc?.img;
+              return (
+                <div key={action.id} style={{background:th.card,border:`1px solid ${th.cardBorder}`,borderRadius:8,overflow:"hidden",display:"flex"}}>
+                  <div style={{width:50,height:70,flexShrink:0,background:th.panel,overflow:"hidden"}}>
+                    {photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📍</div>}
+                  </div>
+                  <div style={{flex:1,padding:"10px 12px",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:700,color:th.text}}>{SCN_EMOJI[action.scenario]||"▶"} {action.scenario}</div>
+                      <div style={{fontSize:10,color:th.textSub,marginTop:2}}>{action.locationName||loc?.name}</div>
+                      <div style={{fontSize:10,color:th.textMuted,marginTop:1}}>{members.map(p=>p.name).join("、")}</div>
+                    </div>
+                    <button onClick={()=>setActions(prev=>prev.filter(a=>a.id!==action.id))} style={{padding:"4px 8px",borderRadius:3,border:`1px solid ${th.red}44`,background:th.red+"0d",color:th.red,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Step 2: Scenario */}
-            {step==="scenario"&&(
-              <div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
-                  {SCENARIOS.map(scn=>(
-                    <button key={scn} onClick={()=>{setDraft(d=>({...d,scenario:scn}));setStep("members");}} style={{padding:"8px 14px",borderRadius:6,border:`1.5px solid ${draft.scenario===scn?th.accent:th.divider}`,background:draft.scenario===scn?th.accentDim:th.panel,color:draft.scenario===scn?th.accent:th.text,fontSize:13,fontWeight:draft.scenario===scn?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
-                      <span>{SCN_EMOJI[scn]||"▶"}</span>{scn}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={()=>setStep("location")} style={{fontSize:11,color:th.textMuted,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
-              </div>
-            )}
-
-            {/* Step 3: Characters */}
-            {step==="members"&&(
-              <div>
-                <div style={{padding:"8px 10px",background:th.panel,borderRadius:6,marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:16}}>{LOC_EMOJI[draft.location]||"📍"}</span>
-                  <div><div style={{fontSize:13,fontWeight:700,color:th.text}}>{draft.location}</div><div style={{fontSize:11,color:th.accent}}>{SCN_EMOJI[draft.scenario]} {draft.scenario}</div></div>
-                </div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:12}}>
-                  {people.map(p=>{
-                    const sel=draft.memberIds.includes(p.id);
-                    return (
-                      <div key={p.id} onClick={()=>toggleMember(p.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}}>
-                        <div style={{borderRadius:"50%",padding:2,border:`2.5px solid ${sel?th.accent:th.cardBorder}`,transition:"border-color 0.15s",overflow:"hidden",width:52,height:52}}>
-                          <Avatar p={p} size={48} round th={th}/>
-                        </div>
-                        <span style={{fontSize:9,fontWeight:sel?700:400,color:sel?th.accent:th.textMuted,textAlign:"center",width:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setStep("scenario")} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
-                  <button onClick={confirm} disabled={draft.memberIds.length===0} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:draft.memberIds.length>0?th.accent:th.divider,color:draft.memberIds.length>0?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:draft.memberIds.length>0?"pointer":"not-allowed",fontFamily:"inherit"}}>Start Action ({draft.memberIds.length} selected)</button>
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         </div>
       )}
+
+      {locations.length===0&&!showCreate&&<div style={{textAlign:"center",padding:"48px 0",color:th.textMuted,fontSize:13}}>No locations yet.<br/><span style={{fontSize:11}}>Tap + to create one.</span></div>}
+
+      {locations.length>0&&(
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Locations</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(100px, 1fr))",gap:10}}>
+            {locations.map(loc=>{
+              const photo=isDark?(loc.nightImg||loc.img):loc.img;
+              return (
+                <div key={loc.id} style={{position:"relative",cursor:"pointer"}} onClick={()=>{setSelLoc(loc);setSelMembers([]);setSelScenario("");}}>
+                  <div style={{aspectRatio:"2/3",borderRadius:7,overflow:"hidden",background:th.panel,border:`1px solid ${th.cardBorder}`,position:"relative"}}>
+                    {photo?<img src={photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,color:th.textMuted}}>📍</div>}
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"4px 6px 6px",background:"linear-gradient(to top,rgba(0,0,0,0.72),transparent)"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{loc.name}</div>
+                    </div>
+                  </div>
+                  <button onClick={e=>{e.stopPropagation();removeLocation(loc.id);}} style={{position:"absolute",top:4,right:4,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showCreate&&(
+        <div style={{background:th.card,border:`1px solid ${th.accent}44`,borderRadius:8,padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{fontSize:10,fontWeight:700,color:th.textMuted,letterSpacing:1.5,textTransform:"uppercase"}}>New Location</div>
+          <div style={{display:"flex",gap:12,alignItems:"flex-end"}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+              <label htmlFor="loc-img" style={{width:56,height:80,borderRadius:6,border:`2px dashed ${th.divider}`,background:th.panel,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden"}}>
+                {newForm.img?<img src={newForm.img} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:22,opacity:0.4}}>☀️</span>}
+              </label>
+              <span style={{fontSize:8,color:th.textMuted,fontWeight:600,letterSpacing:0.5}}>DAY</span>
+              <input id="loc-img" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],400,600).then(s=>setNewForm(f=>({...f,img:s})))}/>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+              <label htmlFor="loc-night" style={{width:56,height:80,borderRadius:6,border:`2px dashed ${th.divider}`,background:th.panel,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden"}}>
+                {newForm.nightImg?<img src={newForm.nightImg} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:22,opacity:0.4}}>🌙</span>}
+              </label>
+              <span style={{fontSize:8,color:th.textMuted,fontWeight:600,letterSpacing:0.5}}>NIGHT</span>
+              <input id="loc-night" type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&compressImg(e.target.files[0],400,600).then(s=>setNewForm(f=>({...f,nightImg:s})))}/>
+            </div>
+            <input value={newForm.name} onChange={e=>setNewForm(f=>({...f,name:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addLocation()} placeholder="Location name..." style={{...iStyle,flex:1}}/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={addLocation} disabled={!newForm.name.trim()} style={{flex:1,padding:"9px",borderRadius:4,border:"none",background:newForm.name.trim()?th.accent:th.divider,color:newForm.name.trim()?"#fff":th.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Create</button>
+            <button onClick={()=>{setShowCreate(false);setNewForm({name:"",img:null,nightImg:null});}} style={{padding:"9px 14px",borderRadius:4,border:`1px solid ${th.divider}`,background:th.panel,color:th.textSub,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {!showCreate&&<button onClick={()=>setShowCreate(true)} style={{width:"100%",padding:"12px",borderRadius:8,border:`1.5px dashed ${th.divider}`,background:"transparent",color:th.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>＋ Add Location</button>}
     </div>
   );
 }

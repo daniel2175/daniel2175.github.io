@@ -299,6 +299,8 @@ function App() {
     const [houses, setHouses] = useState([]);
     const [actions, setActions] = useState([]);
     const [locations, setLocations] = useState([]);
+    const [scenarios, setScenarios] = useState(SCENARIOS);
+    const [activeScene, setActiveScene] = useState(null); // action id for fullscreen VN view
     const [profileId, setProfileId] = useState(null); // full-screen profile
     const [appReady, setAppReady] = useState(false);
     const [splashFading, setSplashFading] = useState(false);
@@ -471,11 +473,70 @@ function App() {
             }
             return React.createElement(ResidentProfile, { person: person, people: people, rels: rels, setRels: setRels, events: events, setEvents: setEvents, messages: messages, setMessages: setMessages, th: th, isDark: isDark, onBack: () => setProfileId(null), onUpdate: (id, u) => setPeople(prev => prev.map(p => p.id === id ? { ...p, ...u } : p)), onDelete: id => { setPeople(prev => prev.filter(p => p.id !== id)); setRels(prev => prev.filter(r => r.a !== id && r.b !== id)); setProfileId(null); }, onAddRel: (a, b, type, titleA = "", titleB = "") => setRels(prev => [...prev.filter(r => !((r.a === a && r.b === b) || (r.a === b && r.b === a))), { id: RID++, a, b, type, titleA, titleB }]), onRemoveRel: id => setRels(prev => prev.filter(r => r.id !== id)) });
         })(),
+        activeScene && (() => {
+            const action = actions.find(a => a.id === activeScene);
+            if (!action) {
+                setActiveScene(null);
+                return null;
+            }
+            const members = people.filter(p => action.memberIds.includes(p.id));
+            const scn = scenarios.find(s => s.name === action.scenario);
+            const lines = (action.customDialogue && action.customDialogue.length > 0) ? action.customDialogue : (DIALOG_LINES[action.scenario] || ["..."]);
+            const dlgIdx = action._dlgIdx || 0;
+            const nextDlg = () => setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: (dlgIdx + 1) % lines.length } : a));
+            const speaker = members[dlgIdx % members.length];
+            const line = lines[dlgIdx % lines.length];
+            const endAction = () => {
+                if (scn && members.length >= 2) {
+                    const pairs = [];
+                    for (let i = 0; i < members.length; i++)
+                        for (let j = i + 1; j < members.length; j++)
+                            pairs.push([members[i].id, members[j].id]);
+                    setRels(prev => prev.map(r => { const ip = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a)); if (!ip)
+                        return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(100, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } }; }));
+                    showToast(`✅ 完成！親密度已更新`);
+                }
+                setActions(prev => prev.filter(a => a.id !== action.id));
+                setActiveScene(null);
+            };
+            return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, display: "flex", flexDirection: "column", background: "#000", overflow: "hidden" } },
+                React.createElement("div", { style: { position: "absolute", inset: 0, overflow: "hidden" } }, action.locationImg ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 } }) : React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(180deg,#1a2744,#0d1520)" } })),
+                React.createElement("div", { style: { position: "relative", zIndex: 2, padding: "10px 14px", paddingTop: "max(env(safe-area-inset-top,0px),10px)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(to bottom,rgba(0,0,0,0.7),transparent)" } },
+                    React.createElement("button", { onClick: () => setActiveScene(null), style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
+                    React.createElement("div", { style: { textAlign: "center" } },
+                        React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
+                        React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
+                            action.scenarioEmoji,
+                            " ",
+                            action.scenario)),
+                    React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
+                React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center" } }, members.map((p, i) => {
+                    const photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
+                    const isSpeaker = speaker?.id === p.id;
+                    const offsetX = members.length === 1 ? 0 : ((i / (Math.max(1, members.length - 1))) - 0.5) * 80;
+                    return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", transform: `scale(${isSpeaker ? 1 : 0.85}) translateX(${offsetX}px)`, transition: "transform 0.3s", zIndex: isSpeaker ? 2 : 1, opacity: isSpeaker ? 1 : 0.65 } },
+                        React.createElement("div", { style: { width: 140, height: 220, overflow: "hidden" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
+                })),
+                React.createElement("div", { onClick: nextDlg, style: { position: "relative", zIndex: 3, padding: "0 12px", paddingBottom: "max(calc(env(safe-area-inset-bottom,0px) + 16px),20px)", cursor: "pointer" } },
+                    React.createElement("div", { style: { background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px" } },
+                        React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#E8A020", marginBottom: 6 } }, speaker?.name || ""),
+                        React.createElement("div", { style: { fontSize: 14, color: "#fff", lineHeight: 1.7, minHeight: 46 } }, line),
+                        React.createElement("div", { style: { textAlign: "right", marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)" } },
+                            "\u9EDE\u64CA\u7E7C\u7E8C \u25B6 (",
+                            dlgIdx % lines.length + 1,
+                            "/",
+                            lines.length,
+                            ")")),
+                    scn && React.createElement("div", { style: { marginTop: 6, display: "flex", gap: 6, justifyContent: "center" } },
+                        React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                        React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                        React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
+        })(),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 12px 8px" } },
             page === "relationship" && React.createElement(RelationshipPage, { people: people, rels: rels, th: th, isDark: isDark }),
             page === "residents" && React.createElement(ResidentsPage, { people: people, setPeople: setPeople, rels: rels, setRels: setRels, th: th, isDark: isDark, showToast: showToast, onOpenProfile: setProfileId }),
             page === "family" && React.createElement(FamilyPage, { people: people, houses: houses, setHouses: setHouses, th: th, showToast: showToast, onOpenProfile: setProfileId }),
-            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, th: th, isDark: isDark, showToast: showToast }),
+            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, scenarios: scenarios, setScenarios: setScenarios, setActiveScene: setActiveScene, th: th, isDark: isDark, showToast: showToast }),
             React.createElement("div", { style: { height: 8 } })),
         React.createElement("div", { style: { flexShrink: 0, background: th.panel, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${th.divider}`, paddingBottom: "max(env(safe-area-inset-bottom,0px),4px)", display: "flex", zIndex: 50, minHeight: 56 } }, NAV.map(n => {
             const active = page === n.key;
@@ -930,14 +991,16 @@ const DIALOG_LINES = {
     "打架": ["你以為你是誰？！", "退後！", "這件事沒完！"],
     "跟蹤": ["只是想確認你在哪裡...", "不要發現我...", "我必須知道你的行蹤。"],
 };
-function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast }) {
+function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, scenarios, setScenarios, setActiveScene, th, isDark, showToast }) {
     const [showWizard, setShowWizard] = useState(false);
-    const [step, setStep] = useState("location");
-    const [draft, setDraft] = useState({ locationId: null, scenario: null, memberIds: [] });
+    const [wizStep, setWizStep] = useState("location");
+    const [draft, setDraft] = useState({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
+    const [dialogInput, setDialogInput] = useState("");
     const [showAddLoc, setShowAddLoc] = useState(false);
     const [locForm, setLocForm] = useState({ name: "", img: null });
-    const [activeScene, setActiveScene] = useState(null); // id of action being viewed
-    const [dialogIdx, setDialogIdx] = useState(0);
+    const [showScenMgr, setShowScenMgr] = useState(false);
+    const [newScen, setNewScen] = useState({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 });
+    const [editScenIdx, setEditScenIdx] = useState(null);
     const iStyle = { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
     const addLocation = () => {
         if (!locForm.name.trim())
@@ -946,86 +1009,18 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
         setLocForm({ name: "", img: null });
         setShowAddLoc(false);
     };
-    const startWizard = () => { setDraft({ locationId: null, scenario: null, memberIds: [] }); setStep("location"); setShowWizard(true); };
+    const startWizard = () => { setDraft({ locationId: null, scenario: null, memberIds: [], customDialogue: [] }); setDialogInput(""); setWizStep("location"); setShowWizard(true); };
     const confirmAction = () => {
         if (!draft.locationId || !draft.scenario || draft.memberIds.length < 2)
             return;
         const loc = locations.find(l => l.id === draft.locationId);
-        setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, ts: Date.now() }]);
+        const dlgLines = dialogInput.trim().split("\n").map(l => l.trim()).filter(Boolean);
+        setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, customDialogue: dlgLines, _dlgIdx: 0, ts: Date.now() }]);
         setShowWizard(false);
         showToast(`${draft.scenario.emoji} ${draft.scenario.name} 開始！`);
     };
-    const endAction = (action) => {
-        const scn = SCENARIOS.find(s => s.name === action.scenario);
-        if (scn && action.memberIds.length >= 2) {
-            const pairs = [];
-            for (let i = 0; i < action.memberIds.length; i++)
-                for (let j = i + 1; j < action.memberIds.length; j++)
-                    pairs.push([action.memberIds[i], action.memberIds[j]]);
-            setRels(prev => prev.map(r => {
-                const isPair = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
-                if (!isPair)
-                    return r;
-                const cur = r.intimacy || {};
-                const cl = v => Math.max(0, Math.min(100, v));
-                return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } };
-            }));
-            showToast(`✅ 完成！親密度已更新`);
-        }
-        setActions(prev => prev.filter(a => a.id !== action.id));
-        if (activeScene === action.id)
-            setActiveScene(null);
-    };
-    const viewAction = id => { setActiveScene(id); setDialogIdx(0); };
-    const nextDialog = (scnName) => {
-        const lines = DIALOG_LINES[scnName] || ["..."];
-        setDialogIdx(i => (i + 1) % lines.length);
-    };
-    // Full-screen VN scene
-    if (activeScene) {
-        const action = actions.find(a => a.id === activeScene);
-        if (!action) {
-            setActiveScene(null);
-            return null;
-        }
-        const members = people.filter(p => action.memberIds.includes(p.id));
-        const scn = SCENARIOS.find(s => s.name === action.scenario);
-        const lines = DIALOG_LINES[action.scenario] || ["..."];
-        const speaker = members[dialogIdx % members.length];
-        const line = lines[dialogIdx % lines.length];
-        return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 400, display: "flex", flexDirection: "column", background: "#000", overflow: "hidden" } },
-            React.createElement("div", { style: { position: "absolute", inset: 0, overflow: "hidden" } }, action.locationImg
-                ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 } })
-                : React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(180deg,#1a2744,#0d1520)" } })),
-            React.createElement("div", { style: { position: "relative", zIndex: 2, padding: "10px 14px", paddingTop: "max(env(safe-area-inset-top,0px),10px)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(to bottom,rgba(0,0,0,0.65),transparent)" } },
-                React.createElement("button", { onClick: () => setActiveScene(null), style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
-                React.createElement("div", { style: { textAlign: "center" } },
-                    React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
-                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
-                        action.scenarioEmoji,
-                        " ",
-                        action.scenario)),
-                React.createElement("button", { onClick: () => endAction(action), style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
-            React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0, paddingBottom: 0 } }, members.map((p, i) => {
-                const photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
-                const isSpeaker = speaker?.id === p.id;
-                const total = members.length;
-                const offset = total === 1 ? 0 : ((i / (total - 1)) - 0.5) * 60;
-                return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", transform: `scale(${isSpeaker ? 1 : 0.88}) translateX(${offset}px)`, transition: "transform 0.3s", zIndex: isSpeaker ? 2 : 1, opacity: isSpeaker ? 1 : 0.7 } },
-                    React.createElement("div", { style: { width: 140, height: 210, overflow: "hidden", borderRadius: 0 } }, photo
-                        ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" } })
-                        : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.05)" } }, p.name[0]))));
-            })),
-            React.createElement("div", { onClick: () => nextDialog(action.scenario), style: { position: "relative", zIndex: 3, margin: "0 0 max(env(safe-area-inset-bottom,0px),12px)", padding: "0 12px" } },
-                React.createElement("div", { style: { background: "rgba(0,0,0,0.82)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px", cursor: "pointer" } },
-                    React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#E8A020", marginBottom: 6, letterSpacing: 0.5 } }, speaker?.name || ""),
-                    React.createElement("div", { style: { fontSize: 14, color: "#fff", lineHeight: 1.7, minHeight: 44 } }, line),
-                    React.createElement("div", { style: { textAlign: "right", marginTop: 8, fontSize: 9, color: "rgba(255,255,255,0.35)" } }, "\u9EDE\u64CA\u7E7C\u7E8C \u25B6")),
-                scn && React.createElement("div", { style: { marginTop: 8, display: "flex", gap: 6, justifyContent: "center" } },
-                    React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
-                    React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                    React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
-    }
+    const removeAction = (id) => { setActions(prev => prev.filter(a => a.id !== id)); if (typeof setActiveScene === "function")
+        setActiveScene(s => s === id ? null : s); };
     return (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
         React.createElement(Panel, { th: th },
             React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
@@ -1046,12 +1041,39 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                 React.createElement("div", { style: { padding: "3px 5px", fontSize: 9, fontWeight: 600, color: th.text, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, loc.name),
                 React.createElement("button", { onClick: () => setLocations(prev => prev.filter(l => l.id !== loc.id)), style: { position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 } }, "\u2715")))))),
             locations.length === 0 && !showAddLoc && React.createElement("div", { style: { padding: "12px 14px", fontSize: 11, color: th.textMuted, textAlign: "center" } }, "\u5C1A\u672A\u65B0\u589E\u5730\u9EDE")),
+        React.createElement(Panel, { th: th },
+            React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
+                React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } },
+                    "\u2B50 \u60C5\u5883 (",
+                    scenarios.length,
+                    ")"),
+                React.createElement("button", { onClick: () => setShowScenMgr(v => !v), style: { padding: "4px 12px", borderRadius: 4, border: "none", background: showScenMgr ? th.divider : th.accent, color: showScenMgr ? th.textSub : "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, showScenMgr ? "收起" : "管理")),
+            showScenMgr && (React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8, borderBottom: `1px solid ${th.divider}` } },
+                scenarios.map((scn, idx) => (React.createElement("div", { key: idx, style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: th.panel, borderRadius: 5 } },
+                    React.createElement("span", { style: { fontSize: 14, flexShrink: 0 } }, scn.emoji),
+                    React.createElement("div", { style: { flex: 1 } },
+                        React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: th.text } }, scn.name),
+                        React.createElement("div", { style: { display: "flex", gap: 4, marginTop: 2 } },
+                            React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                            React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                            React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
+                    React.createElement("button", { onClick: () => setScenarios(prev => prev.filter((_, i) => i !== idx)), style: { padding: "3px 8px", borderRadius: 3, border: `1px solid ${th.red}44`, background: th.red + "0d", color: th.red, fontSize: 10, cursor: "pointer", fontFamily: "inherit" } }, "\u2715")))),
+                React.createElement("div", { style: { padding: "10px", background: th.accentDim, border: `1px solid ${th.accent}33`, borderRadius: 5, display: "flex", flexDirection: "column", gap: 6 } },
+                    React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1, textTransform: "uppercase" } }, "\u65B0\u589E\u60C5\u5883"),
+                    React.createElement("div", { style: { display: "flex", gap: 6 } },
+                        React.createElement("input", { value: newScen.emoji, onChange: e => setNewScen(s => ({ ...s, emoji: e.target.value })), style: { width: 44, padding: "6px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 16, outline: "none", textAlign: "center" } }),
+                        React.createElement("input", { value: newScen.name, onChange: e => setNewScen(s => ({ ...s, name: e.target.value })), placeholder: "\u60C5\u5883\u540D\u7A31", style: { flex: 1, padding: "6px 10px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit" } })),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 } }, [{ k: "love", label: "愛情", color: "#F472B6" }, { k: "friendship", label: "友誼", color: "#FBBF24" }, { k: "family", label: "家庭", color: "#60A5FA" }].map(f => (React.createElement("div", { key: f.k, style: { display: "flex", flexDirection: "column", gap: 2 } },
+                        React.createElement("label", { style: { fontSize: 9, color: f.color, fontWeight: 700 } }, f.label),
+                        React.createElement("input", { type: "number", value: newScen[f.k], onChange: e => setNewScen(s => ({ ...s, [f.k]: parseInt(e.target.value) || 0 })), min: -100, max: 100, style: { padding: "4px 6px", borderRadius: 3, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 12, outline: "none", textAlign: "center", width: "100%", boxSizing: "border-box" } }))))),
+                    React.createElement("button", { onClick: () => { if (!newScen.name.trim())
+                            return; setScenarios(prev => [...prev, { ...newScen }]); setNewScen({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 }); }, disabled: !newScen.name.trim(), style: { padding: "7px", borderRadius: 4, border: "none", background: newScen.name.trim() ? th.accent : th.divider, color: newScen.name.trim() ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u65B0\u589E"))))),
         actions.length > 0 && (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
             React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", padding: "0 2px" } }, "\u9032\u884C\u4E2D\u7684\u884C\u52D5"),
             actions.map(action => {
                 const members = people.filter(p => action.memberIds.includes(p.id));
                 const scn = SCENARIOS.find(s => s.name === action.scenario);
-                return (React.createElement("div", { key: action.id, onClick: () => viewAction(action.id), style: { borderRadius: 8, overflow: "hidden", cursor: "pointer", position: "relative", minHeight: 120, background: "#111" } },
+                return (React.createElement("div", { key: action.id, onClick: () => setActiveScene(action.id), style: { borderRadius: 8, overflow: "hidden", cursor: "pointer", position: "relative", minHeight: 120, background: "#111" } },
                     action.locationImg && React.createElement("img", { src: action.locationImg, style: { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.55 } }),
                     React.createElement("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(to right,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.2) 100%)" } }),
                     React.createElement("div", { style: { position: "relative", zIndex: 1, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, minHeight: 120 } },
@@ -1073,27 +1095,28 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
                                 React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
-                        React.createElement("button", { onClick: e => { e.stopPropagation(); endAction(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 } }, "\u7D50\u675F"))));
+                        React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 5, border: "none", background: "rgba(200,50,50,0.8)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 } }, "\u53D6\u6D88"))));
             }))),
         React.createElement("button", { onClick: startWizard, disabled: locations.length === 0, style: { width: "100%", padding: "12px", borderRadius: 8, border: `1.5px dashed ${th.divider}`, background: "transparent", color: locations.length === 0 ? th.textMuted : th.accent, fontSize: 13, fontWeight: 600, cursor: locations.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" } }, locations.length === 0 ? "先新增地點才能開始行動" : "＋ 新行動"),
         showWizard && (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" } },
             React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 12, overflow: "hidden", maxHeight: "85dvh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" } },
                 React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}`, flexShrink: 0 } },
-                    [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }].map((s, i) => (React.createElement("div", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId)
+                    [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }, { k: "dialogue", l: "對話" }].map((s, i) => (React.createElement("div", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId)
                             return; if (i === 2 && !draft.scenario)
-                            return; setStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: step === s.k ? th.accent : th.textMuted, borderBottom: `2.5px solid ${step === s.k ? th.accent : "transparent"}`, cursor: "pointer" } },
+                            return; if (i === 3 && draft.memberIds.length < 2)
+                            return; setWizStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: wizStep === s.k ? th.accent : th.textMuted, borderBottom: `2.5px solid ${wizStep === s.k ? th.accent : "transparent"}`, cursor: "pointer" } },
                         i + 1,
                         ". ",
                         s.l))),
                     React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "12px 16px", border: "none", background: "transparent", color: th.textMuted, fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2715")),
                 React.createElement("div", { style: { overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "14px", flex: 1 } },
-                    step === "location" && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } }, locations.map(loc => {
+                    wizStep === "location" && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } }, locations.map(loc => {
                         const sel = draft.locationId === loc.id;
-                        return (React.createElement("div", { key: loc.id, onClick: () => { setDraft(d => ({ ...d, locationId: loc.id })); setStep("scenario"); }, style: { width: 96, cursor: "pointer", borderRadius: 6, overflow: "hidden", border: `2.5px solid ${sel ? th.accent : th.cardBorder}`, background: th.panel } },
+                        return (React.createElement("div", { key: loc.id, onClick: () => { setDraft(d => ({ ...d, locationId: loc.id })); setWizStep("scenario"); }, style: { width: 96, cursor: "pointer", borderRadius: 6, overflow: "hidden", border: `2.5px solid ${sel ? th.accent : th.cardBorder}`, background: th.panel } },
                             loc.img ? React.createElement("img", { src: loc.img, style: { width: "100%", height: 60, objectFit: "cover", display: "block" } }) : React.createElement("div", { style: { width: "100%", height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, color: th.textMuted } }, "\uD83D\uDCCD"),
                             React.createElement("div", { style: { padding: "4px 6px", fontSize: 10, fontWeight: 600, color: sel ? th.accent : th.text, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, loc.name)));
                     }))),
-                    step === "scenario" && (React.createElement("div", null,
+                    wizStep === "scenario" && (React.createElement("div", null,
                         React.createElement("div", { style: { fontSize: 9, color: th.textMuted, marginBottom: 10 } },
                             React.createElement("span", { style: { color: "#F472B6", fontWeight: 700 } }, "\u7C89"),
                             "=\u611B\u60C5 \u00B7 ",
@@ -1101,9 +1124,9 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                             "=\u53CB\u8ABC \u00B7 ",
                             React.createElement("span", { style: { color: "#60A5FA", fontWeight: 700 } }, "\u85CD"),
                             "=\u5BB6\u5EAD\uFF08\u7D50\u675F\u6642\u5957\u7528\uFF09"),
-                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, SCENARIOS.map(scn => {
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, scenarios.map(scn => {
                             const sel = draft.scenario?.name === scn.name;
-                            return (React.createElement("button", { key: scn.name, onClick: () => { setDraft(d => ({ ...d, scenario: scn })); setStep("members"); }, style: { padding: "8px 12px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.divider}`, background: sel ? th.accentDim : th.panel, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" } },
+                            return (React.createElement("button", { key: scn.name, onClick: () => { setDraft(d => ({ ...d, scenario: scn })); setWizStep("members"); }, style: { padding: "8px 12px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.divider}`, background: sel ? th.accentDim : th.panel, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" } },
                                 React.createElement("div", { style: { fontSize: 13, color: sel ? th.accent : th.text, fontWeight: sel ? 700 : 400 } },
                                     scn.emoji,
                                     " ",
@@ -1113,7 +1136,7 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                     React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
                                     React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))));
                         })))),
-                    step === "members" && (React.createElement("div", null,
+                    wizStep === "members" && (React.createElement("div", null,
                         React.createElement("div", { style: { padding: "8px 10px", background: th.panel, borderRadius: 6, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 } },
                             (() => { const loc = locations.find(l => l.id === draft.locationId); return loc?.img && React.createElement("img", { src: loc.img, style: { width: 48, height: 32, objectFit: "cover", borderRadius: 3 } }); })(),
                             React.createElement("div", { style: { flex: 1 } },
@@ -1135,11 +1158,17 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                 React.createElement("span", { style: { fontSize: 9, fontWeight: sel ? 700 : 400, color: sel ? th.accent : th.textMuted, textAlign: "center", width: 54, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name)));
                         })),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
-                            React.createElement("button", { onClick: () => setStep("scenario"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"),
-                            React.createElement("button", { onClick: confirmAction, disabled: draft.memberIds.length < 2, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: draft.memberIds.length >= 2 ? th.accent : th.divider, color: draft.memberIds.length >= 2 ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: draft.memberIds.length >= 2 ? "pointer" : "not-allowed", fontFamily: "inherit" } },
-                                "\u958B\u59CB\u884C\u52D5\uFF08",
-                                draft.memberIds.length,
-                                " \u4EBA\uFF09"))))))))));
+                            React.createElement("button", { onClick: () => setWizStep("scenario"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"),
+                            React.createElement("button", { onClick: () => draft.memberIds.length >= 2 && setWizStep("dialogue"), disabled: draft.memberIds.length < 2, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: draft.memberIds.length >= 2 ? th.accent : th.divider, color: draft.memberIds.length >= 2 ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: draft.memberIds.length >= 2 ? "pointer" : "not-allowed", fontFamily: "inherit" } }, "\u4E0B\u4E00\u6B65 \u2192")))),
+                    wizStep === "dialogue" && (React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 8 } }, "\u81EA\u8A02\u5C0D\u8A71\u53F0\u8A5E\uFF08\u6BCF\u884C\u4E00\u53E5\uFF0C\u7559\u7A7A\u4F7F\u7528\u9810\u8A2D\uFF09"),
+                        React.createElement("textarea", { value: dialogInput, onChange: e => setDialogInput(e.target.value), placeholder: "例如：\n今天想吃什麼？\n就這裡吧！", rows: 6, style: { width: "100%", padding: "10px 12px", borderRadius: 6, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", resize: "none", lineHeight: 1.6, boxSizing: "border-box" } }),
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginTop: 4, marginBottom: 12 } },
+                            dialogInput.trim().split("\n").filter(l => l.trim()).length,
+                            " \u53E5\u53F0\u8A5E"),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("button", { onClick: () => setWizStep("members"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"),
+                            React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u958B\u59CB\u884C\u52D5\uFF01"))))))))));
 }
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));

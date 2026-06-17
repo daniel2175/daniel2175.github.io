@@ -42,10 +42,7 @@ const SB_URL = "https://quqncjqgygfgpgcydunp.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cW5janFneWdmZ3BnY3lkdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MTIwNTksImV4cCI6MjA5MjQ4ODA1OX0.OfbPxBM5f4Y0YUxDmgLfYw2As3e5Rp-xodZHduiO_OU";
 async function sbLoad() {
     try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 6000);
-        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }, signal: ctrl.signal });
-        clearTimeout(t);
+        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
         const rows = await r.json();
         return rows?.[0]?.data ?? null;
     }
@@ -366,18 +363,16 @@ function App() {
     };
     // Initial load
     useEffect(() => {
-        const done = () => {
+        const timeout = setTimeout(() => {
             loaded.current = true;
             setSplashFading(true);
             setTimeout(() => setAppReady(true), 500);
-        };
-        const timeout = setTimeout(done, 8000);
+        }, 8000);
         loadCloud().then(() => {
             clearTimeout(timeout);
-            done();
-        }).catch(() => {
-            clearTimeout(timeout);
-            done();
+            loaded.current = true;
+            setSplashFading(true);
+            setTimeout(() => setAppReady(true), 500);
         });
     }, []);
     // Sync from cloud only on visibility change — no polling (prevents mid-edit overwrites)

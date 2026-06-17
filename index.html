@@ -1076,16 +1076,16 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                         React.createElement("button", { onClick: e => { e.stopPropagation(); endAction(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 } }, "\u7D50\u675F"))));
             }))),
         React.createElement("button", { onClick: startWizard, disabled: locations.length === 0, style: { width: "100%", padding: "12px", borderRadius: 8, border: `1.5px dashed ${th.divider}`, background: "transparent", color: locations.length === 0 ? th.textMuted : th.accent, fontSize: 13, fontWeight: 600, cursor: locations.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" } }, locations.length === 0 ? "先新增地點才能開始行動" : "＋ 新行動"),
-        showWizard && (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" } },
-            React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: "12px 12px 0 0", overflow: "hidden", maxHeight: "85dvh", display: "flex", flexDirection: "column" } },
-                React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}` } },
+        showWizard && (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" } },
+            React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 12, overflow: "hidden", maxHeight: "85dvh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" } },
+                React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}`, flexShrink: 0 } },
                     [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }].map((s, i) => (React.createElement("div", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId)
                             return; if (i === 2 && !draft.scenario)
-                            return; setStep(s.k); }, style: { flex: 1, padding: "10px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: step === s.k ? th.accent : th.textMuted, borderBottom: `2.5px solid ${step === s.k ? th.accent : "transparent"}`, cursor: "pointer" } },
+                            return; setStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: step === s.k ? th.accent : th.textMuted, borderBottom: `2.5px solid ${step === s.k ? th.accent : "transparent"}`, cursor: "pointer" } },
                         i + 1,
                         ". ",
                         s.l))),
-                    React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "10px 14px", border: "none", background: "transparent", color: th.textMuted, fontSize: 16, cursor: "pointer" } }, "\u2715")),
+                    React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "12px 16px", border: "none", background: "transparent", color: th.textMuted, fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2715")),
                 React.createElement("div", { style: { overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "14px", flex: 1 } },
                     step === "location" && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } }, locations.map(loc => {
                         const sel = draft.locationId === loc.id;

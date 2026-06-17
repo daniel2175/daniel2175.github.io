@@ -35,14 +35,11 @@
 </head>
 <body>
   <div id="root"></div>
-  <!-- React loaded from CDN — no Babel needed, JSX pre-compiled -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"
-          crossorigin="anonymous"
-          onerror="document.body.innerHTML='<p style=padding:20px>❌ React failed to load. Check internet connection.</p>'"></script>
+          crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"
           crossorigin="anonymous"></script>
   <script>
-    // Pre-compiled from JSX — no Babel required
     const {useState,useRef,useEffect}=React;
 "use strict";
 // ── Supabase ──────────────────────────────────────────────────────────────
@@ -483,7 +480,7 @@ function App() {
             page === "relationship" && React.createElement(RelationshipPage, { people: people, rels: rels, th: th, isDark: isDark }),
             page === "residents" && React.createElement(ResidentsPage, { people: people, setPeople: setPeople, rels: rels, setRels: setRels, th: th, isDark: isDark, showToast: showToast, onOpenProfile: setProfileId }),
             page === "family" && React.createElement(FamilyPage, { people: people, houses: houses, setHouses: setHouses, th: th, showToast: showToast, onOpenProfile: setProfileId }),
-            page === "actions" && React.createElement(ActionsPage, { people: people, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, th: th, isDark: isDark, showToast: showToast }),
+            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, th: th, showToast: showToast }),
             React.createElement("div", { style: { height: 8 } })),
         React.createElement("div", { style: { flexShrink: 0, background: th.panel, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${th.divider}`, paddingBottom: "max(env(safe-area-inset-bottom,0px),4px)", display: "flex", zIndex: 50, minHeight: 56 } }, NAV.map(n => {
             const active = page === n.key;
@@ -886,114 +883,158 @@ function FamilyPage({ people, houses, setHouses, th, showToast, onOpenProfile })
 // ACTIONS PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 let AID = 1;
-const SCENARIOS = ["約會", "喝咖啡", "開會", "散步", "出遊", "買菜", "做菜", "購物", "聚會", "工作", "學習", "慶生", "運動", "看電影", "談判", "密謀", "吃飯", "喝酒", "打架", "跟蹤"];
-const SCN_EMOJI = { "約會": "💕", "喝咖啡": "☕", "開會": "💼", "散步": "🚶", "出遊": "✈️", "買菜": "🥦", "做菜": "👨‍🍳", "購物": "🛍️", "聚會": "🎉", "工作": "💻", "學習": "📝", "慶生": "🎂", "運動": "⚽", "看電影": "🎬", "談判": "🤝", "密謀": "🤫", "吃飯": "🍽️", "喝酒": "🍺", "打架": "👊", "跟蹤": "👣" };
-function ActionsPage({ people, actions, setActions, locations, setLocations, th, isDark, showToast }) {
-    const [selLoc, setSelLoc] = useState(null);
-    const [showCreate, setShowCreate] = useState(false);
-    const [newForm, setNewForm] = useState({ name: "", img: null, nightImg: null });
-    const [selMembers, setSelMembers] = useState([]);
-    const [selScenario, setSelScenario] = useState("");
-    const iStyle = { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
-    const addLocation = () => {
-        if (!newForm.name.trim())
+const SCENARIOS = [
+    { name: "約會", emoji: "💕", love: 15, friendship: 5, family: 0 },
+    { name: "喝咖啡", emoji: "☕", love: 0, friendship: 10, family: 5 },
+    { name: "開會", emoji: "💼", love: -5, friendship: 5, family: 10 },
+    { name: "散步", emoji: "🚶", love: 5, friendship: 10, family: 5 },
+    { name: "出遊", emoji: "✈️", love: 10, friendship: 15, family: 10 },
+    { name: "買菜", emoji: "🥦", love: 0, friendship: 5, family: 15 },
+    { name: "做菜", emoji: "👨‍🍳", love: 0, friendship: 10, family: 15 },
+    { name: "購物", emoji: "🛍️", love: 5, friendship: 10, family: 0 },
+    { name: "聚會", emoji: "🎉", love: 0, friendship: 15, family: 5 },
+    { name: "工作", emoji: "💻", love: 0, friendship: 5, family: 5 },
+    { name: "學習", emoji: "📝", love: 0, friendship: 10, family: 0 },
+    { name: "慶生", emoji: "🎂", love: 10, friendship: 15, family: 15 },
+    { name: "運動", emoji: "⚽", love: 0, friendship: 10, family: 5 },
+    { name: "看電影", emoji: "🎬", love: 10, friendship: 5, family: 0 },
+    { name: "談判", emoji: "🤝", love: -5, friendship: -10, family: -5 },
+    { name: "密謀", emoji: "🤫", love: 5, friendship: 0, family: 10 },
+    { name: "吃飯", emoji: "🍽️", love: 5, friendship: 10, family: 10 },
+    { name: "喝酒", emoji: "🍺", love: 5, friendship: 15, family: -5 },
+    { name: "打架", emoji: "👊", love: -10, friendship: -15, family: -10 },
+    { name: "跟蹤", emoji: "👣", love: 10, friendship: -5, family: -5 },
+];
+function EffectBadge({ val, color }) {
+    if (!val)
+        return null;
+    const sign = val > 0 ? "+" : "";
+    return React.createElement("span", { style: { fontSize: 9, fontWeight: 700, color: val > 0 ? color : "#F87171", background: (val > 0 ? color : "#F87171") + "18", borderRadius: 3, padding: "1px 5px" } },
+        sign,
+        val);
+}
+function ActionsPage({ people, rels, setRels, actions, setActions, th, showToast }) {
+    const [step, setStep] = useState(null);
+    const [draft, setDraft] = useState({ location: "", scenario: null, memberIds: [] });
+    const startNew = () => { setDraft({ location: "", scenario: null, memberIds: [] }); setStep("location"); };
+    const toggleMember = pid => setDraft(d => ({ ...d, memberIds: d.memberIds.includes(pid) ? d.memberIds.filter(x => x !== pid) : [...d.memberIds, pid] }));
+    const confirm = () => {
+        if (!draft.location || !draft.scenario || draft.memberIds.length < 2)
             return;
-        setLocations(prev => [...prev, { id: LID++, name: newForm.name.trim(), img: newForm.img, nightImg: newForm.nightImg }]);
-        setNewForm({ name: "", img: null, nightImg: null });
-        setShowCreate(false);
-        showToast("Location created");
+        setActions(prev => [...prev, { id: AID++, location: draft.location, scenario: draft.scenario.name, memberIds: draft.memberIds, ts: Date.now() }]);
+        showToast(`${draft.scenario.emoji} ${draft.scenario.name} @ ${draft.location} 開始！`);
+        setStep(null);
     };
-    const removeLocation = id => { setLocations(prev => prev.filter(l => l.id !== id)); setActions(prev => prev.filter(a => a.locationId !== id)); };
-    const startScene = () => {
-        if (!selLoc || selMembers.length === 0 || !selScenario)
+    const endAction = (action) => {
+        const scn = SCENARIOS.find(s => s.name === action.scenario);
+        if (!scn || action.memberIds.length < 2) {
+            setActions(prev => prev.filter(a => a.id !== action.id));
             return;
-        setActions(prev => [...prev, { id: AID++, locationId: selLoc.id, locationName: selLoc.name, scenario: selScenario, memberIds: selMembers, ts: Date.now() }]);
-        showToast(`${selScenario} @ ${selLoc.name}`);
-        setSelLoc(null);
-        setSelMembers([]);
-        setSelScenario("");
+        }
+        const pairs = [];
+        for (let i = 0; i < action.memberIds.length; i++)
+            for (let j = i + 1; j < action.memberIds.length; j++)
+                pairs.push([action.memberIds[i], action.memberIds[j]]);
+        setRels(prev => prev.map(r => {
+            const isPair = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+            if (!isPair)
+                return r;
+            const cur = r.intimacy || {};
+            const clamp = v => Math.max(0, Math.min(100, v));
+            return { ...r, intimacy: { love: clamp((cur.love ?? 0) + scn.love), friendship: clamp((cur.friendship ?? 0) + scn.friendship), family: clamp((cur.family ?? 0) + scn.family) } };
+        }));
+        setActions(prev => prev.filter(a => a.id !== action.id));
+        showToast(`✅ ${scn.emoji} ${scn.name} 完成！親密度已更新`);
     };
-    if (selLoc) {
-        const photo = isDark ? (selLoc.nightImg || selLoc.img) : selLoc.img;
-        return (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-            React.createElement("div", { style: { position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 8, overflow: "hidden", background: th.panel } },
-                photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 } }, "\uD83D\uDCCD"),
-                React.createElement("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,0.65),transparent 50%)" } }),
-                React.createElement("button", { onClick: () => { setSelLoc(null); setSelMembers([]); setSelScenario(""); }, style: { position: "absolute", top: 10, left: 10, padding: "5px 12px", borderRadius: 4, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"),
-                React.createElement("div", { style: { position: "absolute", bottom: 12, left: 14 } },
-                    React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: "#fff", textShadow: "0 1px 8px rgba(0,0,0,0.7)" } }, selLoc.name))),
-            React.createElement("div", { style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 8, padding: "12px 14px" } },
-                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 } }, "Select Characters"),
-                people.length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: "16px", color: th.textMuted, fontSize: 12 } }, "No residents yet") :
-                    React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } }, people.map(p => {
-                        const sel = selMembers.includes(p.id);
-                        const photo2 = p.portrait || p.img;
-                        const w = 44, h = 64;
-                        return (React.createElement("div", { key: p.id, onClick: () => setSelMembers(prev => sel ? prev.filter(x => x !== p.id) : [...prev, p.id]), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" } },
-                            React.createElement("div", { style: { width: w, height: h, borderRadius: 5, overflow: "hidden", border: `2.5px solid ${sel ? th.accent : th.cardBorder}`, boxShadow: sel ? `0 0 0 2px ${th.accent}44` : "none", transition: "all 0.15s" } }, photo2 ? React.createElement("img", { src: photo2, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: th.textMuted } }, p.name[0])),
-                            React.createElement("span", { style: { fontSize: 9, fontWeight: sel ? 700 : 400, color: sel ? th.accent : th.textMuted, textAlign: "center", width: w + 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name)));
-                    }))),
-            React.createElement("div", { style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 8, padding: "12px 14px" } },
-                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 } }, "Select Scenario"),
-                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, SCENARIOS.map(s => (React.createElement("button", { key: s, onClick: () => setSelScenario(s === selScenario ? "" : s), style: { padding: "7px 13px", borderRadius: 5, border: `1.5px solid ${s === selScenario ? th.accent : th.divider}`, background: s === selScenario ? th.accentDim : th.panel, color: s === selScenario ? th.accent : th.text, fontSize: 12, fontWeight: s === selScenario ? 700 : 400, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4 } },
-                    SCN_EMOJI[s] || "▶",
-                    " ",
-                    s))))),
-            React.createElement("button", { onClick: startScene, disabled: selMembers.length === 0 || !selScenario, style: { padding: "12px", borderRadius: 6, border: "none", background: selMembers.length > 0 && selScenario ? th.accent : th.divider, color: selMembers.length > 0 && selScenario ? "#fff" : th.textMuted, fontSize: 14, fontWeight: 700, cursor: selMembers.length > 0 && selScenario ? "pointer" : "not-allowed", fontFamily: "inherit" } },
-                "Start Scene",
-                selMembers.length > 0 ? ` (${selMembers.length})` : "",
-                selScenario ? ` · ${selScenario}` : "")));
-    }
-    return (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
-        actions.length > 0 && (React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } }, "Active Scenes"),
-            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, actions.map(action => {
-                const loc = locations.find(l => l.id === action.locationId);
-                const members = people.filter(p => action.memberIds.includes(p.id));
-                const photo = isDark ? (loc?.nightImg || loc?.img) : loc?.img;
-                return (React.createElement("div", { key: action.id, style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 8, overflow: "hidden", display: "flex" } },
-                    React.createElement("div", { style: { width: 50, height: 70, flexShrink: 0, background: th.panel, overflow: "hidden" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 } }, "\uD83D\uDCCD")),
-                    React.createElement("div", { style: { flex: 1, padding: "10px 12px", display: "flex", alignItems: "center", gap: 8 } },
-                        React.createElement("div", { style: { flex: 1 } },
-                            React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: th.text } },
-                                SCN_EMOJI[action.scenario] || "▶",
-                                " ",
-                                action.scenario),
-                            React.createElement("div", { style: { fontSize: 10, color: th.textSub, marginTop: 2 } }, action.locationName || loc?.name),
-                            React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginTop: 1 } }, members.map(p => p.name).join("、"))),
-                        React.createElement("button", { onClick: () => setActions(prev => prev.filter(a => a.id !== action.id)), style: { padding: "4px 8px", borderRadius: 3, border: `1px solid ${th.red}44`, background: th.red + "0d", color: th.red, fontSize: 10, cursor: "pointer", fontFamily: "inherit" } }, "\u2715"))));
-            })))),
-        locations.length === 0 && !showCreate && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: th.textMuted, fontSize: 13 } },
-            "No locations yet.",
+    return (React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        actions.length === 0 && !step && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: th.textMuted, fontSize: 13 } },
+            "\u76EE\u524D\u6C92\u6709\u9032\u884C\u4E2D\u7684\u884C\u52D5",
             React.createElement("br", null),
-            React.createElement("span", { style: { fontSize: 11 } }, "Tap + to create one.")),
-        locations.length > 0 && (React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } }, "Locations"),
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 } }, locations.map(loc => {
-                const photo = isDark ? (loc.nightImg || loc.img) : loc.img;
-                return (React.createElement("div", { key: loc.id, style: { position: "relative", cursor: "pointer" }, onClick: () => { setSelLoc(loc); setSelMembers([]); setSelScenario(""); } },
-                    React.createElement("div", { style: { aspectRatio: "2/3", borderRadius: 7, overflow: "hidden", background: th.panel, border: `1px solid ${th.cardBorder}`, position: "relative" } },
-                        photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, color: th.textMuted } }, "\uD83D\uDCCD"),
-                        React.createElement("div", { style: { position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px 6px", background: "linear-gradient(to top,rgba(0,0,0,0.72),transparent)" } },
-                            React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, loc.name))),
-                    React.createElement("button", { onClick: e => { e.stopPropagation(); removeLocation(loc.id); }, style: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 } }, "\u2715")));
-            })))),
-        showCreate && (React.createElement("div", { style: { background: th.card, border: `1px solid ${th.accent}44`, borderRadius: 8, padding: "14px", display: "flex", flexDirection: "column", gap: 10 } },
-            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } }, "New Location"),
-            React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-end" } },
-                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
-                    React.createElement("label", { htmlFor: "loc-img", style: { width: 56, height: 80, borderRadius: 6, border: `2px dashed ${th.divider}`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden" } }, newForm.img ? React.createElement("img", { src: newForm.img, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 22, opacity: 0.4 } }, "\u2600\uFE0F")),
-                    React.createElement("span", { style: { fontSize: 8, color: th.textMuted, fontWeight: 600, letterSpacing: 0.5 } }, "DAY"),
-                    React.createElement("input", { id: "loc-img", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 400, 600).then(s => setNewForm(f => ({ ...f, img: s }))) })),
-                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
-                    React.createElement("label", { htmlFor: "loc-night", style: { width: 56, height: 80, borderRadius: 6, border: `2px dashed ${th.divider}`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden" } }, newForm.nightImg ? React.createElement("img", { src: newForm.nightImg, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 22, opacity: 0.4 } }, "\uD83C\uDF19")),
-                    React.createElement("span", { style: { fontSize: 8, color: th.textMuted, fontWeight: 600, letterSpacing: 0.5 } }, "NIGHT"),
-                    React.createElement("input", { id: "loc-night", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 400, 600).then(s => setNewForm(f => ({ ...f, nightImg: s }))) })),
-                React.createElement("input", { value: newForm.name, onChange: e => setNewForm(f => ({ ...f, name: e.target.value })), onKeyDown: e => e.key === "Enter" && addLocation(), placeholder: "Location name...", style: { ...iStyle, flex: 1 } })),
-            React.createElement("div", { style: { display: "flex", gap: 8 } },
-                React.createElement("button", { onClick: addLocation, disabled: !newForm.name.trim(), style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: newForm.name.trim() ? th.accent : th.divider, color: newForm.name.trim() ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Create"),
-                React.createElement("button", { onClick: () => { setShowCreate(false); setNewForm({ name: "", img: null, nightImg: null }); }, style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Cancel")))),
-        !showCreate && React.createElement("button", { onClick: () => setShowCreate(true), style: { width: "100%", padding: "12px", borderRadius: 8, border: `1.5px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\uFF0B Add Location")));
+            React.createElement("span", { style: { fontSize: 11 } }, "\u9EDE\u4E0B\u65B9\u6309\u9215\u958B\u59CB")),
+        actions.map(action => {
+            const members = people.filter(p => action.memberIds.includes(p.id));
+            const scn = SCENARIOS.find(s => s.name === action.scenario);
+            return (React.createElement("div", { key: action.id, style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 8, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, background: th.panel, borderBottom: `1px solid ${th.divider}` } },
+                    React.createElement("span", { style: { fontSize: 20 } }, LOC_EMOJI[action.location] || "📍"),
+                    React.createElement("div", { style: { flex: 1 } },
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: th.text } }, action.location),
+                        React.createElement("div", { style: { fontSize: 11, color: th.accent, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" } },
+                            scn?.emoji,
+                            " ",
+                            action.scenario,
+                            scn && React.createElement(React.Fragment, null,
+                                React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                                React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))),
+                    React.createElement("button", { onClick: () => endAction(action), style: { padding: "6px 14px", borderRadius: 5, border: "none", background: th.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 } }, "\u7D50\u675F")),
+                React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: 10 } }, members.map(p => {
+                    const photo = p.portrait || p.img;
+                    return (React.createElement("div", { key: p.id, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } },
+                        React.createElement("div", { style: { width: 46, height: 62, borderRadius: 5, overflow: "hidden", border: `1.5px solid ${th.cardBorder}`, background: th.panel } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: th.textMuted } }, p.name[0])),
+                        React.createElement("span", { style: { fontSize: 9, fontWeight: 600, color: th.text, textAlign: "center", width: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name)));
+                }))));
+        }),
+        !step && React.createElement("button", { onClick: startNew, style: { width: "100%", padding: "12px", borderRadius: 8, border: `1.5px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\uFF0B \u65B0\u884C\u52D5"),
+        step && (React.createElement("div", { style: { background: th.card, border: `1px solid ${th.accent}44`, borderRadius: 8, overflow: "hidden" } },
+            React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}` } }, [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }].map((s, i) => (React.createElement("div", { key: s.k, onClick: () => { if (i === 1 && !draft.location)
+                    return; if (i === 2 && !draft.scenario)
+                    return; setStep(s.k); }, style: { flex: 1, padding: "8px 4px", textAlign: "center", fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: step === s.k ? th.accent : th.textMuted, borderBottom: `2px solid ${step === s.k ? th.accent : "transparent"}`, cursor: "pointer" } },
+                i + 1,
+                ". ",
+                s.l)))),
+            React.createElement("div", { style: { padding: "14px" } },
+                step === "location" && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, LOCATIONS.map(loc => (React.createElement("button", { key: loc, onClick: () => { setDraft(d => ({ ...d, location: loc })); setStep("scenario"); }, style: { padding: "8px 12px", borderRadius: 6, border: `1.5px solid ${draft.location === loc ? th.accent : th.divider}`, background: draft.location === loc ? th.accentDim : th.panel, color: draft.location === loc ? th.accent : th.text, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 } },
+                    React.createElement("span", null, LOC_EMOJI[loc] || "📍"),
+                    loc))))),
+                step === "scenario" && (React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 9, color: th.textMuted, marginBottom: 8 } },
+                        React.createElement("span", { style: { color: "#F472B6", fontWeight: 700 } }, "\u7C89"),
+                        "=\u611B\u60C5 \u00B7 ",
+                        React.createElement("span", { style: { color: "#FBBF24", fontWeight: 700 } }, "\u9EC3"),
+                        "=\u53CB\u8ABC \u00B7 ",
+                        React.createElement("span", { style: { color: "#60A5FA", fontWeight: 700 } }, "\u85CD"),
+                        "=\u5BB6\u5EAD\uFF08\u7D50\u675F\u6642\u5957\u7528\u81F3\u6240\u6709\u89D2\u8272\u5C0D\uFF09"),
+                    React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 } }, SCENARIOS.map(scn => {
+                        const sel = draft.scenario?.name === scn.name;
+                        return (React.createElement("button", { key: scn.name, onClick: () => { setDraft(d => ({ ...d, scenario: scn })); setStep("members"); }, style: { padding: "8px 12px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.divider}`, background: sel ? th.accentDim : th.panel, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" } },
+                            React.createElement("div", { style: { fontSize: 13, color: sel ? th.accent : th.text, fontWeight: sel ? 700 : 400 } },
+                                scn.emoji,
+                                " ",
+                                scn.name),
+                            React.createElement("div", { style: { display: "flex", gap: 3 } },
+                                React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                                React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))));
+                    })),
+                    React.createElement("button", { onClick: () => setStep("location"), style: { fontSize: 11, color: th.textMuted, background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"))),
+                step === "members" && (React.createElement("div", null,
+                    React.createElement("div", { style: { padding: "8px 10px", background: th.panel, borderRadius: 6, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 } },
+                        React.createElement("span", { style: { fontSize: 16 } }, LOC_EMOJI[draft.location] || "📍"),
+                        React.createElement("div", { style: { flex: 1 } },
+                            React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: th.text } }, draft.location),
+                            React.createElement("div", { style: { fontSize: 11, color: th.accent, display: "flex", alignItems: "center", gap: 4 } },
+                                draft.scenario?.emoji,
+                                " ",
+                                draft.scenario?.name,
+                                draft.scenario && React.createElement(React.Fragment, null,
+                                    React.createElement(EffectBadge, { val: draft.scenario.love, color: "#F472B6" }),
+                                    React.createElement(EffectBadge, { val: draft.scenario.friendship, color: "#FBBF24" }),
+                                    React.createElement(EffectBadge, { val: draft.scenario.family, color: "#60A5FA" }))))),
+                    React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 8 } }, "\u9078\u64C7\u89D2\u8272\uFF08\u6700\u5C112\u4EBA\uFF0C\u9700\u6709\u95DC\u4FC2\u624D\u6703\u66F4\u65B0\u89AA\u5BC6\u5EA6\uFF09"),
+                    React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 } }, people.map(p => {
+                        const sel = draft.memberIds.includes(p.id);
+                        const photo = p.portrait || p.img;
+                        return (React.createElement("div", { key: p.id, onClick: () => toggleMember(p.id), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" } },
+                            React.createElement("div", { style: { width: 52, height: 70, borderRadius: 6, overflow: "hidden", border: `2.5px solid ${sel ? th.accent : th.cardBorder}`, transition: "border-color 0.15s", background: th.panel } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: th.textMuted } }, p.name[0])),
+                            React.createElement("span", { style: { fontSize: 9, fontWeight: sel ? 700 : 400, color: sel ? th.accent : th.textMuted, textAlign: "center", width: 54, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name)));
+                    })),
+                    React.createElement("div", { style: { display: "flex", gap: 8 } },
+                        React.createElement("button", { onClick: () => setStep("scenario"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 Back"),
+                        React.createElement("button", { onClick: confirm, disabled: draft.memberIds.length < 2, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: draft.memberIds.length >= 2 ? th.accent : th.divider, color: draft.memberIds.length >= 2 ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: draft.memberIds.length >= 2 ? "pointer" : "not-allowed", fontFamily: "inherit" } },
+                            "\u958B\u59CB\u884C\u52D5\uFF08",
+                            draft.memberIds.length,
+                            " \u4EBA\uFF09")))))))));
 }
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));

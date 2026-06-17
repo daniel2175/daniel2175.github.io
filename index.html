@@ -42,10 +42,7 @@ const SB_URL = "https://quqncjqgygfgpgcydunp.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cW5janFneWdmZ3BnY3lkdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MTIwNTksImV4cCI6MjA5MjQ4ODA1OX0.OfbPxBM5f4Y0YUxDmgLfYw2As3e5Rp-xodZHduiO_OU";
 async function sbLoad() {
     try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 5000);
-        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }, signal: controller.signal });
-        clearTimeout(timer);
+        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
         const rows = await r.json();
         return rows?.[0]?.data ?? null;
     }
@@ -366,18 +363,16 @@ function App() {
     };
     // Initial load
     useEffect(() => {
-        const done = () => {
+        const timeout = setTimeout(() => {
             loaded.current = true;
             setSplashFading(true);
-            setTimeout(() => setAppReady(true), 400);
-        };
-        const timeout = setTimeout(done, 4000);
+            setTimeout(() => setAppReady(true), 500);
+        }, 8000);
         loadCloud().then(() => {
             clearTimeout(timeout);
-            done();
-        }).catch(() => {
-            clearTimeout(timeout);
-            done();
+            loaded.current = true;
+            setSplashFading(true);
+            setTimeout(() => setAppReady(true), 500);
         });
     }, []);
     // Sync from cloud only on visibility change — no polling (prevents mid-edit overwrites)
@@ -521,14 +516,8 @@ function App() {
                             action.scenario)),
                     React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
                 React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center" } }, members.map((p, i) => {
+                    const photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
                     const isSpeaker = speaker?.id === p.id;
-                    let photo;
-                    if (isSpeaker && curLine.portraitId) {
-                        const ill = (p.illustrations || []).find(il => il.id === curLine.portraitId);
-                        photo = ill ? ill.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
-                    } else {
-                        photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
-                    }
                     const offsetX = members.length === 1 ? 0 : ((i / (Math.max(1, members.length - 1))) - 0.5) * 80;
                     return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", transform: `scale(${isSpeaker ? 1 : 0.85}) translateX(${offsetX}px)`, transition: "transform 0.3s", zIndex: isSpeaker ? 2 : 1, opacity: isSpeaker ? 1 : 0.65 } },
                         React.createElement("div", { style: { width: 140, height: 220, overflow: "hidden" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));

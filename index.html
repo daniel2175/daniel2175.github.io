@@ -90,6 +90,15 @@ react-dom/cjs/react-dom-client.production.js:
 </script>
 
   <script>
+// Guard variables for legacy string-children (no-ops)
+var name = name || ""; // shadows window.name safely
+var p = p || {};
+var padding = padding || {};
+var id = id || 0;
+var locationId = locationId || null;
+var isEdit = isEdit || false;
+var sign = sign || "";
+
     const {useState,useRef,useEffect}=React;
 "use strict";
 // ── Supabase ──────────────────────────────────────────────────────────────

@@ -97,7 +97,10 @@ const SB_URL = "https://quqncjqgygfgpgcydunp.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cW5janFneWdmZ3BnY3lkdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MTIwNTksImV4cCI6MjA5MjQ4ODA1OX0.OfbPxBM5f4Y0YUxDmgLfYw2As3e5Rp-xodZHduiO_OU";
 async function sbLoad() {
     try {
-        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 5000);
+        const r = await fetch(`${SB_URL}/rest/v1/imperial_rank?id=eq.main&select=data`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }, signal: ctrl.signal });
+        clearTimeout(t);
         const rows = await r.json();
         return rows?.[0]?.data ?? null;
     }
@@ -344,6 +347,28 @@ function ResidentsPage({ people, setPeople, rels, setRels, th, isDark, showToast
 // ═══════════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ═══════════════════════════════════════════════════════════════════════════
+const SCENARIOS = [
+  {name:"約會", emoji:"💕", love:15, friendship:5, family:0},
+  {name:"喝咖啡", emoji:"☕", love:0, friendship:10, family:5},
+  {name:"開會", emoji:"💼", love:-5, friendship:5, family:10},
+  {name:"散步", emoji:"🚶", love:5, friendship:10, family:5},
+  {name:"出遊", emoji:"✈️", love:10, friendship:15, family:10},
+  {name:"買菜", emoji:"🥦", love:0, friendship:5, family:15},
+  {name:"做菜", emoji:"👨\u200D🍳", love:0, friendship:10, family:15},
+  {name:"購物", emoji:"🛍️", love:5, friendship:10, family:0},
+  {name:"聚會", emoji:"🎉", love:0, friendship:15, family:5},
+  {name:"工作", emoji:"💻", love:0, friendship:5, family:5},
+  {name:"學習", emoji:"📝", love:0, friendship:10, family:0},
+  {name:"慶生", emoji:"🎂", love:10, friendship:15, family:15},
+  {name:"運動", emoji:"⚽", love:0, friendship:10, family:5},
+  {name:"看電影", emoji:"🎬", love:10, friendship:5, family:0},
+  {name:"談判", emoji:"🤝", love:-5, friendship:-10, family:-5},
+  {name:"密謀", emoji:"🤫", love:5, friendship:0, family:10},
+  {name:"吃飯", emoji:"🍽️", love:5, friendship:10, family:10},
+  {name:"喝酒", emoji:"🍺", love:5, friendship:15, family:-5},
+  {name:"打架", emoji:"👊", love:-10, friendship:-15, family:-10},
+  {name:"跟蹤", emoji:"👣", love:10, friendship:-5, family:-5},
+];
 function App() {
     const [page, setPage] = useState("residents");
     const [appMode, setAppMode] = useState("day");
@@ -418,16 +443,18 @@ function App() {
     };
     // Initial load
     useEffect(() => {
-        const timeout = setTimeout(() => {
+        const done = () => {
             loaded.current = true;
             setSplashFading(true);
             setTimeout(() => setAppReady(true), 500);
-        }, 8000);
+        };
+        const timeout = setTimeout(done, 6000);
         loadCloud().then(() => {
             clearTimeout(timeout);
-            loaded.current = true;
-            setSplashFading(true);
-            setTimeout(() => setAppReady(true), 500);
+            done();
+        }).catch(() => {
+            clearTimeout(timeout);
+            done();
         });
     }, []);
     // Sync from cloud only on visibility change — no polling (prevents mid-edit overwrites)
@@ -1219,5 +1246,19 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
+
+<div id="err-overlay" style="display:none;position:fixed;inset:0;background:#1a1a1a;color:#ff6b6b;font-family:monospace;font-size:13px;padding:20px;z-index:99999;white-space:pre-wrap;overflow:auto;"></div>
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var el = document.getElementById('err-overlay');
+  el.style.display = 'block';
+  el.textContent = '❌ JS ERROR:\n' + msg + '\nLine: ' + line + ' Col: ' + col + '\n\n' + (err && err.stack ? err.stack : '');
+};
+window.addEventListener('unhandledrejection', function(e) {
+  var el = document.getElementById('err-overlay');
+  el.style.display = 'block';
+  el.textContent += '\n❌ UNHANDLED PROMISE:\n' + (e.reason && e.reason.stack ? e.reason.stack : e.reason);
+});
+</script>
 </body>
 </html>

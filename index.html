@@ -208,6 +208,7 @@ function relColor(typeId, isDark) {
     return d.color;
 }
 let NID = 1, RID = 1;
+let HID = 1, LID = 1, AID = 1;
 // ── UI primitives ─────────────────────────────────────────────────────────
 function Panel({ children, th, style = {} }) {
     return React.createElement("div", { style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 6, overflow: "hidden", ...style } }, children);

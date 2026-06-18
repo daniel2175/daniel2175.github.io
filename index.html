@@ -882,7 +882,7 @@ function App() {
                     React.createElement("div", { style: { textAlign: "center" } },
                         React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
                         React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
-                            action.scenarioEmoji,
+
                             " ",
                             action.scenario)),
                     React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
@@ -1071,7 +1071,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
                         React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } },
                             "Relationships (",
-                            known.length,
+
                             ")"),
                         React.createElement("button", { onClick: () => { setShowAddRel(true); setRelTarget(null); }, style: { padding: "4px 12px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "+ ADD")),
                     known.length === 0
@@ -1160,7 +1160,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("span", { style: { fontSize: 11, color: th.textMuted } }, "+"),
                                 React.createElement(Avatar, { p: relTarget, size: 30, round: true, th: th }),
                                 React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: th.text } },
-                                    person.name,
+
                                     " \u00D7 ",
                                     relTarget.name)),
                             React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } }, "\u2600\uFE0F Day"),
@@ -1173,11 +1173,11 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("div", { style: { width: 8, height: 8, borderRadius: "50%", background: relCategory.color, flexShrink: 0 } }),
                                 React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: relCategory.color } }, relCategory.zh),
                                 React.createElement("span", { style: { fontSize: 11, color: th.textMuted } },
-                                    person.name,
+
                                     " \u00D7 ",
                                     relTarget.name)),
                             React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } },
-                                person.name,
+
                                 " \u7684\u7A31\u865F"),
                             React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } }, relCategory.titles.map(title => (React.createElement("button", { key: title, onClick: () => setRelTitleA(title), style: { padding: "8px 16px", borderRadius: 4, border: `1.5px solid ${relCategory.color}${relTitleA === title ? "cc" : "55"}`, background: relCategory.color + (relTitleA === title ? "30" : "12"), color: relCategory.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, title)))),
                             relTitleA && (React.createElement("button", { onClick: () => { }, style: { display: "none" } })),
@@ -1189,11 +1189,11 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("div", { style: { width: 8, height: 8, borderRadius: "50%", background: relCategory.color, flexShrink: 0 } }),
                                 React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: relCategory.color } }, relCategory.zh),
                                 React.createElement("span", { style: { fontSize: 11, color: th.textMuted } },
-                                    person.name,
+
                                     "\uFF1D",
                                     relTitleA)),
                             React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } },
-                                relTarget.name,
+
                                 " \u7684\u7A31\u865F"),
                             React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } },
                                 relCategory.titles.map(title => (React.createElement("button", { key: title, onClick: () => {
@@ -1214,7 +1214,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
         "); } // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 // FAMILY PAGE // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 let HID = 1, LID = 1; function PortraitThumb(", (p, size = 56, th, isOwner = false, onClick, dimmed = false, showRemove = false),
         ")",
         "const photo=p.portrait||p.img; const w=size, h=Math.round(size*4/3); const ownerBorder=\"3px solid #FFFFFF\"; const normalBorder=`2px solid $",
-        th.cardBorder,
+
         "`; return (",
         React.createElement("div", { onClick: onClick, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: onClick ? "pointer" : "default", opacity: dimmed ? 0.55 : 1, position: "relative" } },
             React.createElement("div", { style: { width: w, height: h, borderRadius: 6, overflow: "hidden", border: isOwner ? ownerBorder : normalBorder, boxShadow: isOwner ? "0 0 0 2px rgba(180,180,180,0.4)" : "none", boxSizing: "border-box", flexShrink: 0, background: th.panel, position: "relative" } },
@@ -1224,24 +1224,24 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
         "); } function FamilyPage(", (people, houses, setHouses, th, showToast, onOpenProfile),
         ")",
         "const [showAdd,setShowAdd]=useState(false); const [editId,setEditId]=useState(null); const [form,setForm]=useState(",
-        name,
+
         ":\"\",note:\"\"}); const iStyle=",
-        padding,
+
         ":\"8px 10px\",borderRadius:4,background:th.panel,border:`1px solid $",
-        th.divider,
+
         "`,color:th.text,fontSize:13,outline:\"none\",fontFamily:\"inherit\",width:\"100%\",boxSizing:\"border-box\"}; const addHouse=()=>",
         "if(!form.name.trim()) return; setHouses(prev=>[...prev,",
-        id,
+
         ":HID++,name:form.name.trim(),ownerId:null,memberIds:[],note:form.note}]); setForm(",
-        name,
+
         ":\"\",note:\"\"}); setShowAdd(false); showToast(\"House added\"); }; const removeHouse=id=>setHouses(prev=>prev.filter(h=>h.id!==id)); const toggleMember=(houseId,pid)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:",
-        ...(h, memberIds),
+
         ":h.memberIds.includes(pid)?h.memberIds.filter(x=>x!==pid):[...h.memberIds,pid]})); const setOwner=(houseId,pid)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:",
-        ...(h, ownerId),
+
         ":h.ownerId===pid?null:pid})); const updateNote=(houseId,note)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:",
-        ...(h, note),
+
         ")); const updateName=(houseId,name)=>setHouses(prev=>prev.map(h=>h.id!==houseId?h:",
-        ...(h, name),
+
         ")); return (",
         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             houses.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: th.textMuted, fontSize: 13 } },
@@ -1284,45 +1284,45 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                     React.createElement("button", { onClick: addHouse, disabled: !form.name.trim(), style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: form.name.trim() ? th.accent : th.divider, color: form.name.trim() ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Add"),
                     React.createElement("button", { onClick: () => setShowAdd(false), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Cancel")))) : (React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "12px", borderRadius: 8, border: `1.5px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\uFF0B Add House"))),
         "); } // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 // ACTIONS PAGE \u2014 Visual Novel Style // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 let AID = 1; const SCENARIOS = [",
-        name,
+
         ":\"\u7D04\u6703\",   emoji:\"\uD83D\uDC95\", love:15, friendship:5,   family:0   },",
-        name,
+
         ":\"\u559D\u5496\u5561\", emoji:\"\u2615\", love:0,  friendship:10,  family:5   },",
-        name,
+
         ":\"\u958B\u6703\",   emoji:\"\uD83D\uDCBC\", love:-5, friendship:5,   family:10  },",
-        name,
+
         ":\"\u6563\u6B65\",   emoji:\"\uD83D\uDEB6\", love:5,  friendship:10,  family:5   },",
-        name,
+
         ":\"\u51FA\u904A\",   emoji:\"\u2708\uFE0F\", love:10, friendship:15,  family:10  },",
-        name,
+
         ":\"\u8CB7\u83DC\",   emoji:\"\uD83E\uDD66\", love:0,  friendship:5,   family:15  },",
-        name,
+
         ":\"\u505A\u83DC\",   emoji:\"\uD83D\uDC68\u200D\uD83C\uDF73\",love:0,friendship:10,family:15},",
-        name,
+
         ":\"\u8CFC\u7269\",   emoji:\"\uD83D\uDECD\uFE0F\", love:5,  friendship:10,  family:0   },",
-        name,
+
         ":\"\u805A\u6703\",   emoji:\"\uD83C\uDF89\", love:0,  friendship:15,  family:5   },",
-        name,
+
         ":\"\u5DE5\u4F5C\",   emoji:\"\uD83D\uDCBB\", love:0,  friendship:5,   family:5   },",
-        name,
+
         ":\"\u5B78\u7FD2\",   emoji:\"\uD83D\uDCDD\", love:0,  friendship:10,  family:0   },",
-        name,
+
         ":\"\u6176\u751F\",   emoji:\"\uD83C\uDF82\", love:10, friendship:15,  family:15  },",
-        name,
+
         ":\"\u904B\u52D5\",   emoji:\"\u26BD\", love:0,  friendship:10,  family:5   },",
-        name,
+
         ":\"\u770B\u96FB\u5F71\", emoji:\"\uD83C\uDFAC\", love:10, friendship:5,   family:0   },",
-        name,
+
         ":\"\u8AC7\u5224\",   emoji:\"\uD83E\uDD1D\", love:-5, friendship:-10, family:-5  },",
-        name,
+
         ":\"\u5BC6\u8B00\",   emoji:\"\uD83E\uDD2B\", love:5,  friendship:0,   family:10  },",
-        name,
+
         ":\"\u5403\u98EF\",   emoji:\"\uD83C\uDF7D\uFE0F\", love:5,  friendship:10,  family:10  },",
-        name,
+
         ":\"\u559D\u9152\",   emoji:\"\uD83C\uDF7A\", love:5,  friendship:15,  family:-5  },",
-        name,
+
         ":\"\u6253\u67B6\",   emoji:\"\uD83D\uDC4A\", love:-10,friendship:-15, family:-10 },",
-        name,
+
         ":\"\u8DDF\u8E64\",   emoji:\"\uD83D\uDC63\", love:10, friendship:-5,  family:-5  }, ]; function EffectBadge(", (val, color),
         ")",
         "if(val===undefined||val===0) return null; const sign=val>0?\"+\":\"\"; return ",
@@ -1334,32 +1334,32 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
         ":[\"\u4ECA\u5929\u7684\u4F60\u683C\u5916\u7F8E\u9E97...\",\"\u6211\u4E00\u76F4\u5728\u7B49\u9019\u4E00\u523B\u3002\",\"\u6642\u9593\u597D\u50CF\u90FD\u975C\u6B62\u4E86\u3002\"], \"\u559D\u5496\u5561\":[\"\u9019\u676F\u5496\u5561\u771F\u4E0D\u932F\u3002\",\"\u5750\u4E0B\u4F86\uFF0C\u597D\u597D\u804A\u804A\u5427\u3002\",\"\u4ECA\u5929\u5929\u6C23\u771F\u9069\u5408\u559D\u5496\u5561\u3002\"], \"\u958B\u6703\":[\"\u8B93\u6211\u5011\u8A0E\u8AD6\u4E00\u4E0B\u8A08\u5283\u3002\",\"\u9019\u500B\u65B9\u6848\u9700\u8981\u8ABF\u6574\u3002\",\"\u4F60\u7684\u610F\u898B\u5F88\u91CD\u8981\u3002\"], \"\u6563\u6B65\":[\"\u4E00\u8D77\u8D70\u8D70\u5427\u3002\",\"\u4ECA\u5929\u7684\u98A8\u666F\u5F88\u597D\u3002\",\"\u4E0D\u7528\u8AAA\u4EC0\u9EBC\uFF0C\u9019\u6A23\u5C31\u5F88\u597D\u3002\"], \"\u51FA\u904A\":[\"\u7D42\u65BC\u51FA\u4F86\u653E\u9B06\u4E86\uFF01\",\"\u9019\u88E1\u771F\u6F02\u4EAE\uFF01\",\"\u4E0B\u6B21\u9084\u8981\u518D\u4F86\uFF01\"], \"\u8CB7\u83DC\":[\"\u4ECA\u5929\u60F3\u5403\u4EC0\u9EBC\uFF1F\",\"\u9019\u500B\u770B\u8D77\u4F86\u5F88\u65B0\u9BAE\u3002\",\"\u4E00\u8D77\u505A\u665A\u9910\u5427\u3002\"], \"\u505A\u83DC\":[\"\u4F60\u771F\u7684\u5F88\u6703\u505A\u83DC\u3002\",\"\u8B93\u6211\u4E5F\u5E6B\u5FD9\u3002\",\"\u9999\u5473\u98C4\u51FA\u4F86\u4E86\uFF01\"], \"\u8CFC\u7269\":[\"\u9019\u500B\u9069\u5408\u4F60\u55CE\uFF1F\",\"\u8A66\u8A66\u9019\u4EF6\u770B\u770B\u3002\",\"\u6211\u4F86\u5E6B\u4F60\u9078\u3002\"], \"\u805A\u6703\":[\"\u4ECA\u5929\u5927\u5BB6\u90FD\u4F86\u4E86\uFF01\",\"\u70BA\u6211\u5011\u4E7E\u676F\uFF01\",\"\u9019\u6A23\u7684\u591C\u665A\u771F\u7F8E\u597D\u3002\"], \"\u5DE5\u4F5C\":[\"\u4E00\u8D77\u52AA\u529B\u5427\u3002\",\"\u9019\u500B\u4EA4\u7D66\u6211\u8655\u7406\u3002\",\"\u8F9B\u82E6\u4E86\uFF0C\u4F11\u606F\u4E00\u4E0B\u3002\"], \"\u5B78\u7FD2\":[\"\u4E0D\u61C2\u7684\u53EF\u4EE5\u554F\u6211\u3002\",\"\u9019\u500B\u984C\u76EE\u5F88\u6709\u8DA3\u3002\",\"\u4E00\u8D77\u52A0\u6CB9\u5427\uFF01\"], \"\u6176\u751F\":[\"\u751F\u65E5\u5FEB\u6A02\uFF01\",\"\u8A31\u500B\u9858\u671B\u5427\u3002\",\"\u4ECA\u5929\u662F\u4F60\u7684\u7279\u5225\u65E5\u5B50\u3002\"], \"\u904B\u52D5\":[\"\u52A0\u6CB9\uFF0C\u4E0D\u8981\u653E\u68C4\uFF01\",\"\u518D\u4F86\u4E00\u7D44\uFF01\",\"\u4F60\u9032\u6B65\u5F88\u591A\u4E86\u3002\"], \"\u770B\u96FB\u5F71\":[\"\u9019\u4E00\u5E55\u771F\u611F\u52D5\u3002\",\"\u5653\uFF0C\u96FB\u5F71\u958B\u59CB\u4E86\u3002\",\"\u4F60\u559C\u6B61\u9019\u7A2E\u985E\u578B\u55CE\uFF1F\"], \"\u8AC7\u5224\":[\"\u6211\u5011\u9700\u8981\u597D\u597D\u8AC7\u8AC7\u3002\",\"\u9019\u4E0D\u662F\u6211\u60F3\u8981\u7684\u7D50\u679C\u3002\",\"\u8B93\u6211\u5011\u51B7\u975C\u4E00\u9EDE\u3002\"], \"\u5BC6\u8B00\":[\"\u9019\u4EF6\u4E8B\u53EA\u6709\u6211\u5011\u77E5\u9053\u3002\",\"\u4F60\u78BA\u5B9A\u8981\u9019\u6A23\u505A\u55CE\uFF1F\",\"\u5C31\u6309\u8A08\u5283\u9032\u884C\u3002\"], \"\u5403\u98EF\":[\"\u4ECA\u5929\u5403\u4EC0\u9EBC\uFF1F\",\"\u9019\u9053\u83DC\u771F\u597D\u5403\u3002\",\"\u4E0B\u6B21\u63DB\u6211\u8ACB\u5BA2\u3002\"], \"\u559D\u9152\":[\"\u4E7E\u676F\uFF01\",\"\u4ECA\u665A\u5C31\u653E\u9B06\u4E00\u4E0B\u3002\",\"\u559D\u591A\u4E86\u8981\u6CE8\u610F\u5B89\u5168\u3002\"], \"\u6253\u67B6\":[\"\u4F60\u4EE5\u70BA\u4F60\u662F\u8AB0\uFF1F\uFF01\",\"\u9000\u5F8C\uFF01\",\"\u9019\u4EF6\u4E8B\u6C92\u5B8C\uFF01\"], \"\u8DDF\u8E64\":[\"\u53EA\u662F\u60F3\u78BA\u8A8D\u4F60\u5728\u54EA\u88E1...\",\"\u4E0D\u8981\u767C\u73FE\u6211...\",\"\u6211\u5FC5\u9808\u77E5\u9053\u4F60\u7684\u884C\u8E64\u3002\"], }; function ActionsPage(", (people, rels, setRels, actions, setActions, locations, setLocations, scenarios, setScenarios, setActiveScene, th, isDark, showToast),
         ")",
         "const [showWizard,setShowWizard]=useState(false); const [wizStep,setWizStep]=useState(\"location\"); const [draft,setDraft]=useState(",
-        locationId,
+
         ":null,scenario:null,memberIds:[],customDialogue:[]}); const [dlgLines,setDlgLines]=useState([]); // [", (text, speakerId, portraitId),
         "] const [dialogInput,setDialogInput]=useState(\"\"); const [showAddLoc,setShowAddLoc]=useState(false); const [locForm,setLocForm]=useState(",
-        name,
+
         ":\"\",img:null}); const [showScenMgr,setShowScenMgr]=useState(false); const [newScen,setNewScen]=useState(",
-        name,
+
         ":\"\",emoji:\"\u2B50\",love:0,friendship:0,family:0}); const [editScenIdx,setEditScenIdx]=useState(null); const iStyle=",
-        padding,
+
         ":\"9px 12px\",borderRadius:4,background:th.panel,border:`1px solid $",
-        th.divider,
+
         "`,color:th.text,fontSize:13,outline:\"none\",fontFamily:\"inherit\",width:\"100%\",boxSizing:\"border-box\"}; const addLocation=()=>",
         "if(!locForm.name.trim()) return; setLocations(prev=>[...prev,",
-        id,
+
         ":LID++,name:locForm.name.trim(),img:locForm.img}]); setLocForm(",
-        name,
+
         ":\"\",img:null}); setShowAddLoc(false); }; const startWizard=()=>",
         setDraft({ locationId: null, scenario: null, memberIds: [], customDialogue: [] }),
         "; setDlgLines([]); setWizStep(\"location\"); setShowWizard(true); }; const confirmAction=()=>",
         "if(!draft.locationId||!draft.scenario||draft.memberIds.length",
         React.createElement(React.Fragment, null),
         "2) return; const loc=locations.find(l=>l.id===draft.locationId); setActions(prev=>[...prev,",
-        id,
+
         ":AID++,locationId:draft.locationId,locationName:loc?.name||\"\",locationImg:loc?.img||null,scenario:draft.scenario.name,scenarioEmoji:draft.scenario.emoji,memberIds:draft.memberIds,customDialogue:dlgLines.filter(l=>l.text.trim()),_dlgIdx:0,ts:Date.now()}]); setShowWizard(false); showToast(`$",
-        draft.scenario.emoji,
+
         " $",
-        draft.scenario.name,
+
         " \u958B\u59CB\uFF01`); }; const removeAction=(id)=>",
         setActions(prev => prev.filter(a => a.id !== id)),
         "; if(typeof setActiveScene===\"function\") setActiveScene(s=>s===id?null:s); }; return (",
@@ -1368,7 +1368,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                 React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } },
                         "\uD83D\uDCCD \u5730\u9EDE (",
-                        locations.length,
+
                         ")"),
                     React.createElement("button", { onClick: () => setShowAddLoc(v => !v), style: { padding: "4px 12px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "+ \u65B0\u589E")),
                 showAddLoc && (React.createElement("div", { style: { padding: "12px 14px", borderBottom: `1px solid ${th.divider}`, display: "flex", flexDirection: "column", gap: 8 } },
@@ -1387,7 +1387,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                 React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } },
                         "\u2B50 \u60C5\u5883 (",
-                        scenarios.length,
+
                         ")"),
                     React.createElement("button", { onClick: () => setShowScenMgr(v => !v), style: { padding: "4px 12px", borderRadius: 4, border: "none", background: showScenMgr ? th.divider : th.accent, color: showScenMgr ? th.textSub : "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, showScenMgr ? "收起" : "管理")),
                 showScenMgr && (React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8, borderBottom: `1px solid ${th.divider}` } },
@@ -1430,7 +1430,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                             React.createElement("div", { style: { flex: 1 } },
                                 React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 } }, action.locationName),
                                 React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 6 } },
-                                    action.scenarioEmoji,
+
                                     " ",
                                     action.scenario),
                                 scn && React.createElement("div", { style: { display: "flex", gap: 4 } },
@@ -1470,7 +1470,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 const sel = draft.scenario?.name === scn.name;
                                 return (React.createElement("button", { key: scn.name, onClick: () => { setDraft(d => ({ ...d, scenario: scn })); setWizStep("members"); }, style: { padding: "8px 12px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.divider}`, background: sel ? th.accentDim : th.panel, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" } },
                                     React.createElement("div", { style: { fontSize: 13, color: sel ? th.accent : th.text, fontWeight: sel ? 700 : 400 } },
-                                        scn.emoji,
+
                                         " ",
                                         scn.name),
                                     React.createElement("div", { style: { display: "flex", gap: 3 } },

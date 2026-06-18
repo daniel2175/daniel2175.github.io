@@ -369,6 +369,264 @@ const SCENARIOS = [
   {name:"打架", emoji:"👊", love:-10, friendship:-15, family:-10},
   {name:"跟蹤", emoji:"👣", love:10, friendship:-5, family:-5},
 ];
+// ── PortraitThumb ─────────────────────────────────────────────────────────
+function PortraitThumb({ p, size = 56, th, isOwner = false, onClick, dimmed = false, showRemove = false }) {
+    const photo = p.portrait || p.img;
+    const w = size, h = Math.round(size * 4 / 3);
+    const ownerBorder = "3px solid #FFFFFF";
+    const normalBorder = `2px solid ${th.cardBorder}`;
+    return React.createElement("div", { onClick: onClick, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: onClick ? "pointer" : "default", opacity: dimmed ? 0.55 : 1, position: "relative" } },
+        React.createElement("div", { style: { width: w, height: h, borderRadius: 6, overflow: "hidden", border: isOwner ? ownerBorder : normalBorder, boxShadow: isOwner ? "0 0 0 2px rgba(180,180,180,0.4)" : "none", boxSizing: "border-box", flexShrink: 0, background: th.panel, position: "relative" } },
+            photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: w * 0.4, fontWeight: 700, color: th.textMuted } }, p.name[0]),
+            showRemove && React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(180,30,30,0.45)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#fff" } }, "✕")),
+        React.createElement("span", { style: { fontSize: 9, fontWeight: 600, color: isOwner ? th.accent : th.text, textAlign: "center", width: w + 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name));
+}
+
+// ── EffectBadge ───────────────────────────────────────────────────────────
+function EffectBadge({ val, color }) {
+    if (val === undefined || val === 0) return null;
+    const sign = val > 0 ? "+" : "";
+    return React.createElement("span", { style: { fontSize: 9, fontWeight: 700, color: val > 0 ? color : "#F87171", background: (val > 0 ? color : "#F87171") + "22", borderRadius: 3, padding: "1px 4px" } }, sign, val);
+}
+
+// ── FamilyPage ────────────────────────────────────────────────────────────
+function FamilyPage({ people, houses, setHouses, th, showToast, onOpenProfile }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [form, setForm] = useState({ name: "", note: "" });
+    const iStyle = { padding: "8px 10px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
+    const addHouse = () => {
+        if (!form.name.trim()) return;
+        setHouses(prev => [...prev, { id: HID++, name: form.name.trim(), ownerId: null, memberIds: [], note: form.note }]);
+        setForm({ name: "", note: "" });
+        setShowAdd(false);
+        showToast("House added");
+    };
+    const removeHouse = id => setHouses(prev => prev.filter(h => h.id !== id));
+    const toggleMember = (houseId, pid) => setHouses(prev => prev.map(h => h.id !== houseId ? h : { ...h, memberIds: h.memberIds.includes(pid) ? h.memberIds.filter(x => x !== pid) : [...h.memberIds, pid] }));
+    const setOwner = (houseId, pid) => setHouses(prev => prev.map(h => h.id !== houseId ? h : { ...h, ownerId: h.ownerId === pid ? null : pid }));
+    const updateNote = (houseId, note) => setHouses(prev => prev.map(h => h.id !== houseId ? h : { ...h, note }));
+    const updateName = (houseId, name) => setHouses(prev => prev.map(h => h.id !== houseId ? h : { ...h, name }));
+    return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        houses.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: th.textMuted, fontSize: 13 } }, "No houses yet.", React.createElement("br", null), React.createElement("span", { style: { fontSize: 11 } }, "Tap + to add one.")),
+        houses.map(house => {
+            const members = people.filter(p => house.memberIds.includes(p.id));
+            const owner = people.find(p => p.id === house.ownerId);
+            const isEdit = editId === house.id;
+            const nonMembers = people.filter(p => !house.memberIds.includes(p.id));
+            return React.createElement("div", { key: house.id, style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 8, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${th.divider}` } },
+                    React.createElement("span", { style: { fontSize: 20 } }, "\uD83C\uDFE0"),
+                    React.createElement("div", { style: { flex: 1 } },
+                        isEdit ? React.createElement("input", { value: house.name, onChange: e => updateName(house.id, e.target.value), style: { ...iStyle, fontSize: 14, fontWeight: 700 } }) : React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: th.text } }, house.name),
+                        owner && !isEdit && React.createElement("div", { style: { fontSize: 10, color: th.textSub, marginTop: 1 } }, "Owner: ", React.createElement("span", { style: { color: th.accent, fontWeight: 600 } }, owner.name))),
+                    React.createElement("button", { onClick: () => setEditId(isEdit ? null : house.id), style: { padding: "4px 10px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, isEdit ? "Done" : "Edit"),
+                    React.createElement("button", { onClick: () => { removeHouse(house.id); if (editId === house.id) setEditId(null); }, style: { padding: "4px 8px", borderRadius: 4, border: `1px solid ${th.red}44`, background: th.red + "0d", color: th.red, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕")),
+                React.createElement("div", { style: { padding: "12px 14px" } },
+                    members.length === 0 && !isEdit && React.createElement("div", { style: { fontSize: 11, color: th.textMuted, fontStyle: "italic" } }, "No members"),
+                    members.length > 0 && React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 12, marginBottom: isEdit ? 14 : 0 } },
+                        members.map(p => React.createElement("div", { key: p.id, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+                            React.createElement(PortraitThumb, { p, size: 56, th, isOwner: house.ownerId === p.id, onClick: isEdit ? () => toggleMember(house.id, p.id) : () => onOpenProfile && onOpenProfile(p.id), showRemove: isEdit }),
+                            isEdit && React.createElement("button", { onClick: e => { e.stopPropagation(); setOwner(house.id, p.id); }, style: { fontSize: 8, padding: "2px 5px", borderRadius: 3, border: `1px solid ${house.ownerId === p.id ? th.accent : th.divider}`, background: "transparent", color: house.ownerId === p.id ? th.accent : th.textMuted, cursor: "pointer", fontFamily: "inherit" } }, house.ownerId === p.id ? "★ Owner" : "Set owner")))),
+                    isEdit && nonMembers.length > 0 && React.createElement("div", { style: { marginBottom: 10 } },
+                        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } }, "Add members"),
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } }, nonMembers.map(p => React.createElement(PortraitThumb, { key: p.id, p, size: 44, th, onClick: () => toggleMember(house.id, p.id) })))),
+                    isEdit && React.createElement("textarea", { value: house.note || "", onChange: e => updateNote(house.id, e.target.value), placeholder: "Notes...", style: { ...iStyle, resize: "none", height: 56, fontSize: 11, marginTop: 8 } }),
+                    !isEdit && house.note && React.createElement("div", { style: { fontSize: 11, color: th.textSub, marginTop: 8, fontStyle: "italic" } }, house.note)));
+        }),
+        showAdd ? React.createElement("div", { style: { background: th.card, border: `1px solid ${th.accent}44`, borderRadius: 8, padding: "14px" } },
+            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 } }, "New House"),
+            React.createElement("input", { value: form.name, onChange: e => setForm(f => ({ ...f, name: e.target.value })), onKeyDown: e => e.key === "Enter" && addHouse(), placeholder: "House name...", style: { ...iStyle, marginBottom: 8 } }),
+            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                React.createElement("button", { onClick: addHouse, disabled: !form.name.trim(), style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: form.name.trim() ? 1 : 0.5 } }, "Add"),
+                React.createElement("button", { onClick: () => setShowAdd(false), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Cancel"))) :
+            React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "10px", borderRadius: 8, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "+ Add House"));
+}
+
+// ── ActionsPage ───────────────────────────────────────────────────────────
+function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast, setActiveScene }) {
+    const [scenarios, setScenarios] = useState(SCENARIOS);
+    const [showWizard, setShowWizard] = useState(false);
+    const [wizStep, setWizStep] = useState("location");
+    const [draft, setDraft] = useState({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
+    const [dlgLines, setDlgLines] = useState([]);
+    const [showAddLoc, setShowAddLoc] = useState(false);
+    const [locForm, setLocForm] = useState({ name: "", img: null });
+    const [showScenMgr, setShowScenMgr] = useState(false);
+    const [newScen, setNewScen] = useState({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 });
+    const [editScenIdx, setEditScenIdx] = useState(null);
+    const iStyle = { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
+    const addLocation = () => {
+        if (!locForm.name.trim()) return;
+        setLocations(prev => [...prev, { id: LID++, name: locForm.name.trim(), img: locForm.img }]);
+        setLocForm({ name: "", img: null });
+        setShowAddLoc(false);
+    };
+    const startWizard = () => {
+        setDraft({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
+        setDlgLines([]);
+        setWizStep("location");
+        setShowWizard(true);
+    };
+    const confirmAction = () => {
+        if (!draft.locationId || !draft.scenario || draft.memberIds.length < 2) return;
+        const loc = locations.find(l => l.id === draft.locationId);
+        setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0, ts: Date.now() }]);
+        setShowWizard(false);
+        showToast(`${draft.scenario.emoji} ${draft.scenario.name} 開始！`);
+    };
+    const removeAction = (id) => {
+        setActions(prev => prev.filter(a => a.id !== id));
+        if (typeof setActiveScene === "function") setActiveScene(s => s === id ? null : s);
+    };
+    return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        React.createElement(Panel, { th },
+            React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
+                React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } }, "\uD83D\uDCCD 地點 (", locations.length, ")"),
+                React.createElement("button", { onClick: () => setShowAddLoc(v => !v), style: { padding: "4px 12px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, showAddLoc ? "Cancel" : "+")),
+            showAddLoc && React.createElement("div", { style: { padding: "12px 14px", borderBottom: `1px solid ${th.divider}`, display: "flex", flexDirection: "column", gap: 8 } },
+                React.createElement("input", { value: locForm.name, onChange: e => setLocForm(f => ({ ...f, name: e.target.value })), onKeyDown: e => e.key === "Enter" && addLocation(), placeholder: "Location name...", style: iStyle }),
+                React.createElement("label", { htmlFor: "loc-img", style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer" } },
+                    locForm.img ? React.createElement("img", { src: locForm.img, style: { width: 32, height: 32, objectFit: "cover", borderRadius: 4 } }) : React.createElement("span", null, "\uD83D\uDDBC\uFE0F"),
+                    React.createElement("span", null, locForm.img ? "Change image" : "Add image (optional)")),
+                React.createElement("input", { id: "loc-img", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && (() => { const r = new FileReader(); r.onload = ev => setLocForm(f => ({ ...f, img: ev.target.result })); r.readAsDataURL(e.target.files[0]); })() }),
+                React.createElement("div", { style: { display: "flex", gap: 8 } },
+                    React.createElement("button", { onClick: addLocation, disabled: !locForm.name.trim(), style: { flex: 1, padding: "8px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: locForm.name.trim() ? 1 : 0.5 } }, "Add"),
+                    React.createElement("button", { onClick: () => setShowAddLoc(false), style: { padding: "8px 12px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Cancel"))),
+            locations.length > 0 && React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: 8 } },
+                locations.map(loc => React.createElement("div", { key: loc.id, style: { position: "relative", width: 80, borderRadius: 6, overflow: "hidden", border: `1px solid ${th.cardBorder}`, background: th.card } },
+                    loc.img ? React.createElement("img", { src: loc.img, style: { width: "100%", height: 54, objectFit: "cover", display: "block" } }) : React.createElement("div", { style: { height: 54, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } }, "\uD83D\uDCCD"),
+                    React.createElement("div", { style: { padding: "3px 5px", fontSize: 9, fontWeight: 600, color: th.text, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, loc.name),
+                    React.createElement("button", { onClick: () => setLocations(prev => prev.filter(l => l.id !== loc.id)), style: { position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "✕")))),
+            locations.length === 0 && !showAddLoc && React.createElement("div", { style: { padding: "12px 14px", fontSize: 11, color: th.textMuted, textAlign: "center" } }, "No locations yet. Tap + to add one.")),
+        React.createElement(Panel, { th },
+            React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
+                React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } }, "⭐ 情境 (", scenarios.length, ")"),
+                React.createElement("button", { onClick: () => setShowScenMgr(v => !v), style: { padding: "4px 12px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, showScenMgr ? "Done" : "Edit")),
+            showScenMgr && React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8, borderBottom: `1px solid ${th.divider}` } },
+                scenarios.map((scn, idx) => React.createElement("div", { key: idx, style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: th.panel, borderRadius: 6 } },
+                    React.createElement("span", { style: { fontSize: 14, flexShrink: 0 } }, scn.emoji),
+                    React.createElement("div", { style: { flex: 1 } },
+                        React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: th.text } }, scn.name),
+                        React.createElement("div", { style: { display: "flex", gap: 4, marginTop: 2 } },
+                            React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                            React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                            React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
+                    React.createElement("button", { onClick: () => setScenarios(prev => prev.filter((_, i) => i !== idx)), style: { padding: "3px 8px", borderRadius: 4, border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕"))),
+                React.createElement("div", { style: { padding: "10px", background: th.accentDim, border: `1px solid ${th.accent}33`, borderRadius: 5, display: "flex", flexDirection: "column", gap: 6 } },
+                    React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1, textTransform: "uppercase" } }, "Add Scenario"),
+                    React.createElement("div", { style: { display: "flex", gap: 6 } },
+                        React.createElement("input", { value: newScen.emoji, onChange: e => setNewScen(s => ({ ...s, emoji: e.target.value })), style: { ...iStyle, width: 44, textAlign: "center", fontSize: 16 } }),
+                        React.createElement("input", { value: newScen.name, onChange: e => setNewScen(s => ({ ...s, name: e.target.value })), placeholder: "Scenario name", style: { ...iStyle, flex: 1 } })),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 } },
+                        [{ k: "love", label: "愛情", color: "#F472B6" }, { k: "friendship", label: "友誼", color: "#FBBF24" }, { k: "family", label: "家庭", color: "#60A5FA" }].map(f => React.createElement("div", { key: f.k },
+                            React.createElement("label", { style: { fontSize: 9, color: f.color, fontWeight: 700 } }, f.label),
+                            React.createElement("input", { type: "number", value: newScen[f.k], onChange: e => setNewScen(s => ({ ...s, [f.k]: parseInt(e.target.value) || 0 })), style: { ...iStyle, padding: "5px 8px", fontSize: 12 } })))),
+                    React.createElement("button", { onClick: () => { if (!newScen.name.trim()) return; setScenarios(prev => [...prev, { ...newScen }]); setNewScen({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 }); }, style: { padding: "7px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Add")))),
+        actions.length > 0 && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", padding: "4px 2px" } }, "行動記錄"),
+            actions.map(action => {
+                const members = people.filter(p => action.memberIds.includes(p.id));
+                const scn = SCENARIOS.find(s => s.name === action.scenario);
+                return React.createElement("div", { key: action.id, onClick: () => setActiveScene(action.id), style: { borderRadius: 8, overflow: "hidden", background: th.card, border: `1px solid ${th.cardBorder}`, position: "relative", cursor: "pointer" } },
+                    action.locationImg && React.createElement("img", { src: action.locationImg, style: { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.35 } }),
+                    React.createElement("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(to right,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.1) 100%)" } }),
+                    React.createElement("div", { style: { position: "relative", zIndex: 1, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 } },
+                        React.createElement("div", { style: { display: "flex", gap: 4, flexShrink: 0 } },
+                            members.slice(0, 3).map(p => {
+                                const photo = p.portrait || p.img;
+                                return React.createElement("div", { key: p.id, style: { width: 44, height: 62, borderRadius: 4, overflow: "hidden", border: "2px solid rgba(255,255,255,0.4)", background: "rgba(0,0,0,0.3)" } },
+                                    photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#fff" } }, p.name[0]));
+                            }),
+                            members.length > 3 && React.createElement("div", { style: { width: 44, height: 62, borderRadius: 4, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 } }, "+", members.length - 3)),
+                        React.createElement("div", { style: { flex: 1 } },
+                            React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 } }, action.locationName),
+                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 6 } }, action.scenarioEmoji, " ", action.scenario),
+                            scn && React.createElement("div", { style: { display: "flex", gap: 4 } },
+                                React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                                React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
+                        React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕")));
+            })),
+        React.createElement("button", { onClick: startWizard, disabled: locations.length === 0, style: { width: "100%", padding: "12px", borderRadius: 8, border: "none", background: locations.length === 0 ? th.panel : th.accent, color: locations.length === 0 ? th.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: locations.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" } }, locations.length === 0 ? "先新增地點才能開始行動" : "＋ 開始行動"),
+        showWizard && React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+            React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: "12px 12px 0 0", maxHeight: "85dvh", display: "flex", flexDirection: "column" } },
+                React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}`, flexShrink: 0 } },
+                    [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }, { k: "dialogue", l: "對話" }].map((s, i) => React.createElement("button", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId) return; if (i === 2 && !draft.scenario) return; if (i === 3 && draft.memberIds.length < 2) return; setWizStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", background: "transparent", color: wizStep === s.k ? th.accent : th.textMuted, borderBottom: wizStep === s.k ? `2px solid ${th.accent}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" } }, i + 1, ". ", s.l)),
+                    React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "12px 16px", border: "none", background: "transparent", color: th.textMuted, fontSize: 18, cursor: "pointer" } }, "✕")),
+                React.createElement("div", { style: { overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "14px", flex: 1 } },
+                    wizStep === "location" && React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } },
+                        locations.map(loc => {
+                            const sel = draft.locationId === loc.id;
+                            return React.createElement("div", { key: loc.id, onClick: () => { setDraft(d => ({ ...d, locationId: loc.id })); setWizStep("scenario"); }, style: { width: 100, borderRadius: 8, overflow: "hidden", border: `2px solid ${sel ? th.accent : th.cardBorder}`, background: th.card, cursor: "pointer" } },
+                                loc.img ? React.createElement("img", { src: loc.img, style: { width: "100%", height: 60, objectFit: "cover", display: "block" } }) : React.createElement("div", { style: { height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 } }, "\uD83D\uDCCD"),
+                                React.createElement("div", { style: { padding: "4px 6px", fontSize: 10, fontWeight: 600, color: sel ? th.accent : th.text, textAlign: "center" } }, loc.name));
+                        })),
+                    wizStep === "scenario" && React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 9, color: th.textMuted, marginBottom: 10 } },
+                            React.createElement("span", { style: { color: "#F472B6", fontWeight: 700 } }, "粉"), "=愛情 · ",
+                            React.createElement("span", { style: { color: "#FBBF24", fontWeight: 700 } }, "黃"), "=友誼 · ",
+                            React.createElement("span", { style: { color: "#60A5FA", fontWeight: 700 } }, "藍"), "=家庭（結束時套用）"),
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+                            scenarios.map(scn => {
+                                const sel = draft.scenario?.name === scn.name;
+                                return React.createElement("button", { key: scn.name, onClick: () => { setDraft(d => ({ ...d, scenario: scn })); setWizStep("members"); }, style: { padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.cardBorder}`, background: sel ? th.accentDim : th.panel, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } },
+                                    React.createElement("div", { style: { fontSize: 13, color: sel ? th.accent : th.text, fontWeight: sel ? 700 : 400 } }, scn.emoji, " ", scn.name),
+                                    React.createElement("div", { style: { display: "flex", gap: 3 } },
+                                        React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                                        React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                                        React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })));
+                            }))),
+                    wizStep === "members" && React.createElement("div", null,
+                        React.createElement("div", { style: { padding: "8px 10px", background: th.panel, borderRadius: 6, marginBottom: 10, display: "flex", gap: 10, alignItems: "center" } },
+                            (() => { const loc = locations.find(l => l.id === draft.locationId); return loc?.img && React.createElement("img", { src: loc.img, style: { width: 40, height: 40, objectFit: "cover", borderRadius: 4 } }); })(),
+                            React.createElement("div", { style: { flex: 1 } },
+                                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: th.text } }, locations.find(l => l.id === draft.locationId)?.name),
+                                React.createElement("div", { style: { fontSize: 11, color: th.accent, display: "flex", alignItems: "center", gap: 4 } },
+                                    draft.scenario?.emoji, " ", draft.scenario?.name,
+                                    draft.scenario && React.createElement(React.Fragment, null,
+                                        React.createElement(EffectBadge, { val: draft.scenario.love, color: "#F472B6" }),
+                                        React.createElement(EffectBadge, { val: draft.scenario.friendship, color: "#FBBF24" }),
+                                        React.createElement(EffectBadge, { val: draft.scenario.family, color: "#60A5FA" }))))),
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 8 } }, "選擇角色（最少2人）"),
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 } },
+                            people.map(p => {
+                                const sel = draft.memberIds.includes(p.id);
+                                const photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
+                                return React.createElement("div", { key: p.id, onClick: () => { const ids = draft.memberIds; setDraft(d => ({ ...d, memberIds: ids.includes(p.id) ? ids.filter(x => x !== p.id) : [...ids, p.id] })); }, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", opacity: sel ? 1 : 0.5 } },
+                                    React.createElement("div", { style: { width: 52, height: 70, borderRadius: 6, overflow: "hidden", border: `2.5px solid ${sel ? th.accent : th.cardBorder}` } },
+                                        photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: th.textMuted } }, p.name[0])),
+                                    React.createElement("span", { style: { fontSize: 9, fontWeight: sel ? 700 : 400, color: sel ? th.accent : th.textMuted, textAlign: "center", maxWidth: 56 } }, p.name));
+                            })),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("button", { onClick: () => setWizStep("scenario"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
+                            React.createElement("button", { onClick: () => draft.memberIds.length >= 2 && setWizStep("dialogue"), disabled: draft.memberIds.length < 2, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: draft.memberIds.length >= 2 ? th.accent : th.panel, color: draft.memberIds.length >= 2 ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: draft.memberIds.length >= 2 ? "pointer" : "not-allowed", fontFamily: "inherit" } }, "Next →"))),
+                    wizStep === "dialogue" && React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 10 } }, "每句台詞選說話角色"),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: "45dvh", overflowY: "auto", marginBottom: 10 } },
+                            dlgLines.map((line, li) => {
+                                const speaker = people.find(p => p.id === line.speakerId) || draft.memberIds.map(id => people.find(p => p.id === id)).filter(Boolean)[0];
+                                return React.createElement("div", { key: li, style: { background: th.panel, borderRadius: 6, padding: "8px 10px", border: `1px solid ${th.divider}` } },
+                                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", overflowX: "auto", paddingBottom: 2 } },
+                                        draft.memberIds.map(id => {
+                                            const p = people.find(x => x.id === id);
+                                            if (!p) return null;
+                                            const photo = p.portrait || p.img;
+                                            const sel = line.speakerId === id;
+                                            return React.createElement("div", { key: id, onClick: () => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, speakerId: id } : l)), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", flexShrink: 0 } },
+                                                React.createElement("div", { style: { width: 34, height: 46, borderRadius: 4, overflow: "hidden", border: `2px solid ${sel ? th.accent : th.cardBorder}`, opacity: sel ? 1 : 0.5 } },
+                                                    photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: th.textMuted } }, p.name[0])),
+                                                React.createElement("span", { style: { fontSize: 8, color: sel ? th.accent : th.textMuted, width: 36, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name));
+                                        })),
+                                    React.createElement("input", { value: line.text, onChange: e => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, text: e.target.value } : l)), placeholder: "台詞...", style: { ...iStyle, marginTop: 8, padding: "6px 8px", fontSize: 12 } }),
+                                    React.createElement("button", { onClick: () => setDlgLines(prev => prev.filter((_, i) => i !== li)), style: { width: 24, height: 24, borderRadius: "50%", border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 12, cursor: "pointer", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center" } }, "✕"));
+                            })),
+                        React.createElement("button", { onClick: () => setDlgLines(prev => [...prev, { text: "", speakerId: draft.memberIds[0] || null }]), style: { width: "100%", padding: "8px", borderRadius: 4, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 } }, "+ 加一句台詞"),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("button", { onClick: () => setWizStep("members"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
+                            React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "開始行動！")))))));
+}
+
 function App() {
     const [page, setPage] = useState("residents");
     const [appMode, setAppMode] = useState("day");

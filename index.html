@@ -487,12 +487,13 @@ function FamilyPage({ people, houses, setHouses, th, showToast, onOpenProfile })
 }
 
 // ── ActionsPage ───────────────────────────────────────────────────────────
-function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast, setActiveScene }) {
+function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast, setActiveScene, editRequest, onEditConsumed }) {
     const [scenarios, setScenarios] = useState(SCENARIOS);
     const [showWizard, setShowWizard] = useState(false);
     const [wizStep, setWizStep] = useState("location");
     const [draft, setDraft] = useState({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
     const [dlgLines, setDlgLines] = useState([]);
+    const [editingActionId, setEditingActionId] = useState(null); // null = creating new action; set = editing existing one
     const [showAddLoc, setShowAddLoc] = useState(false);
     const [locForm, setLocForm] = useState({ name: "", img: null });
     const [showScenMgr, setShowScenMgr] = useState(false);
@@ -506,23 +507,66 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
         setShowAddLoc(false);
     };
     const startWizard = () => {
+        setEditingActionId(null);
         setDraft({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
         setDlgLines([]);
         setWizStep("location");
         setShowWizard(true);
     };
+    const startEditWizard = (action) => {
+        const scn = scenarios.find(s => s.name === action.scenario) || { name: action.scenario, emoji: action.scenarioEmoji, love: 0, friendship: 0, family: 0 };
+        setEditingActionId(action.id);
+        setDraft({ locationId: action.locationId, scenario: scn, memberIds: [...action.memberIds], customDialogue: action.customDialogue || [] });
+        setDlgLines((action.customDialogue || []).map(l => ({ ...l })));
+        setWizStep("location");
+        setShowWizard(true);
+    };
+    // Allow other parts of the app (e.g. the VN scene viewer's Edit button) to
+    // request opening this wizard in edit mode for a given action.
+    useEffect(() => {
+        if (editRequest) {
+            startEditWizard(editRequest);
+            if (typeof onEditConsumed === "function") onEditConsumed();
+        }
+    }, [editRequest]);
     const confirmAction = () => {
         if (!draft.locationId || !draft.scenario || draft.memberIds.length < 2) return;
         const loc = locations.find(l => l.id === draft.locationId);
-        setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0, ts: Date.now() }]);
+        if (editingActionId) {
+            setActions(prev => prev.map(a => a.id !== editingActionId ? a : {
+                ...a, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null,
+                scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds,
+                customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0
+            }));
+            showToast("✅ 行動已更新");
+        } else {
+            setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0, ts: Date.now(), isSpecial: false }]);
+            showToast(`${draft.scenario.emoji} ${draft.scenario.name} 開始！`);
+        }
         setShowWizard(false);
-        showToast(`${draft.scenario.emoji} ${draft.scenario.name} 開始！`);
+        setEditingActionId(null);
     };
     const removeAction = (id) => {
         setActions(prev => prev.filter(a => a.id !== id));
         if (typeof setActiveScene === "function") setActiveScene(s => s === id ? null : s);
     };
+    const toggleSpecial = (id) => {
+        setActions(prev => prev.map(a => a.id === id ? { ...a, isSpecial: !a.isSpecial } : a));
+    };
     return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        actions.some(a => a.isSpecial) && React.createElement(Panel, { th },
+            React.createElement("div", { style: { padding: "10px 14px", borderBottom: `1px solid ${th.divider}` } },
+                React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#FBBF24", letterSpacing: 1.5, textTransform: "uppercase" } }, "★ 特殊記憶 (", actions.filter(a => a.isSpecial).length, ")")),
+            React.createElement("div", { style: { padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: 8 } },
+                actions.filter(a => a.isSpecial).map(action => {
+                    const members = people.filter(p => action.memberIds.includes(p.id));
+                    return React.createElement("div", { key: action.id, onClick: () => setActiveScene(action.id), style: { position: "relative", width: 92, borderRadius: 6, overflow: "hidden", border: "1px solid #FBBF2466", background: th.card, cursor: "pointer" } },
+                        action.locationImg ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: 58, objectFit: "cover", display: "block" } }) : React.createElement("div", { style: { height: 58, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } }, "📍"),
+                        React.createElement("div", { style: { position: "absolute", top: 3, right: 3, fontSize: 12 } }, "⭐"),
+                        React.createElement("div", { style: { padding: "4px 5px" } },
+                            React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, action.locationName),
+                            React.createElement("div", { style: { fontSize: 8, color: th.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, members.map(p => p.name).join("、"))));
+                }))),
         React.createElement(Panel, { th },
             React.createElement("div", { style: { padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.divider}` } },
                 React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } }, "\uD83D\uDCCD 地點 (", locations.length, ")"),
@@ -589,11 +633,14 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
                                 React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
-                        React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕")));
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" } },
+                            React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕"),
+                            React.createElement("button", { onClick: e => { e.stopPropagation(); toggleSpecial(action.id); }, style: { padding: "5px 10px", borderRadius: 4, border: `1px solid ${action.isSpecial ? "#FBBF24" : "rgba(255,255,255,0.3)"}`, background: action.isSpecial ? "rgba(251,191,36,0.25)" : "rgba(0,0,0,0.3)", color: action.isSpecial ? "#FBBF24" : "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" } }, action.isSpecial ? "★ 已加入特殊記憶" : "☆ 加入特殊記憶"))));
             })),
         React.createElement("button", { onClick: startWizard, disabled: locations.length === 0, style: { width: "100%", padding: "12px", borderRadius: 8, border: "none", background: locations.length === 0 ? th.panel : th.accent, color: locations.length === 0 ? th.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: locations.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" } }, locations.length === 0 ? "先新增地點才能開始行動" : "＋ 開始行動"),
         showWizard && React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", paddingBottom: "max(env(safe-area-inset-bottom,0px),16px)" } },
-            React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 12, maxHeight: "85dvh", display: "flex", flexDirection: "column" } },
+            React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 12, maxHeight: "85dvh", display: "flex", flexDirection: "column", overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "10px 14px 0", fontSize: 11, fontWeight: 700, color: th.textMuted, letterSpacing: 1, textTransform: "uppercase" } }, editingActionId ? "✏️ 編輯行動" : "✨ 新增行動"),
                 React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}`, flexShrink: 0 } },
                     [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }, { k: "dialogue", l: "對話" }].map((s, i) => React.createElement("button", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId) return; if (i === 2 && !draft.scenario) return; if (i === 3 && draft.memberIds.length < 2) return; setWizStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", background: "transparent", color: wizStep === s.k ? th.accent : th.textMuted, borderBottom: wizStep === s.k ? `2px solid ${th.accent}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" } }, i + 1, ". ", s.l)),
                     React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "12px 16px", border: "none", background: "transparent", color: th.textMuted, fontSize: 18, cursor: "pointer" } }, "✕")),
@@ -682,7 +729,7 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                         React.createElement("button", { onClick: () => setDlgLines(prev => [...prev, { text: "", speakerId: draft.memberIds[0] || null, portraitId: "" }]), style: { width: "100%", padding: "8px", borderRadius: 4, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 } }, "+ 加一句台詞"),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
                             React.createElement("button", { onClick: () => setWizStep("members"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
-                            React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "開始行動！")))))));
+                            React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, editingActionId ? "儲存修改" : "開始行動！")))))));
 }
 
 const DIALOG_LINES = {
@@ -719,6 +766,7 @@ function App() {
     const [locations, setLocations] = useState([]);
     const [scenarios, setScenarios] = useState(SCENARIOS);
     const [activeScene, setActiveScene] = useState(null); // action id for fullscreen VN view
+    const [editActionRequest, setEditActionRequest] = useState(null); // action object to edit, consumed by ActionsPage
     const [profileId, setProfileId] = useState(null); // full-screen profile
     const [appReady, setAppReady] = useState(false);
     const [splashFading, setSplashFading] = useState(false);
@@ -996,7 +1044,9 @@ function App() {
 
                             " ",
                             action.scenario)),
-                    React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
+                    React.createElement("div", { style: { display: "flex", gap: 6 } },
+                        React.createElement("button", { onClick: () => { setActiveScene(null); setPage("actions"); setEditActionRequest(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u270F\uFE0F"),
+                        React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F"))),
                 React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", overflow: "hidden", gap: members.length > 1 ? "2vw" : 0, padding: "0 4px", boxSizing: "border-box" } }, members.map((p, i) => {
                     const isSpeaker = speaker?.id === p.id;
                     const overrideIll = isSpeaker && curLine.portraitId ? (p.illustrations || []).find(ill => ill.id === curLine.portraitId) : null;
@@ -1033,7 +1083,7 @@ function App() {
             page === "relationship" && React.createElement(RelationshipPage, { people: people, rels: rels, th: th, isDark: isDark }),
             page === "residents" && React.createElement(ResidentsPage, { people: people, setPeople: setPeople, rels: rels, setRels: setRels, th: th, isDark: isDark, showToast: showToast, onOpenProfile: setProfileId }),
             page === "family" && React.createElement(FamilyPage, { people: people, houses: houses, setHouses: setHouses, th: th, showToast: showToast, onOpenProfile: setProfileId }),
-            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, scenarios: scenarios, setScenarios: setScenarios, setActiveScene: setActiveScene, th: th, isDark: isDark, showToast: showToast }),
+            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, scenarios: scenarios, setScenarios: setScenarios, setActiveScene: setActiveScene, th: th, isDark: isDark, showToast: showToast, editRequest: editActionRequest, onEditConsumed: () => setEditActionRequest(null) }),
             React.createElement("div", { style: { height: 8 } })),
         React.createElement("div", { style: { flexShrink: 0, background: th.panel, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${th.divider}`, paddingBottom: "max(env(safe-area-inset-bottom,0px),4px)", display: "flex", zIndex: 50, minHeight: 56 } }, NAV.map(n => {
             const active = page === n.key;

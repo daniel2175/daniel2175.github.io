@@ -140,6 +140,35 @@ async function sbSave(state) {
 }
 const BG_DAY = "var(--bg-day)";
 const BG_NIGHT = "var(--bg-night)";
+const SB_BUCKET = "tstoc-images";
+// Upload a dataURL (from compressImg) to Supabase Storage and return its public URL.
+// Falls back to returning the original dataURL if the upload fails, so the app
+// keeps working (just storing the image inline) rather than losing the picture.
+async function uploadToStorage(dataUrl, prefix = "img") {
+    try {
+        const match = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.*)$/);
+        if (!match) return dataUrl;
+        const mime = match[1];
+        const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+        const byteChars = atob(match[2]);
+        const bytes = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+        const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const r = await fetch(`${SB_URL}/storage/v1/object/${SB_BUCKET}/${path}`, {
+            method: "POST",
+            headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": mime },
+            body: bytes
+        });
+        if (!r.ok) {
+            console.error("uploadToStorage failed:", r.status, await r.text().catch(() => ""));
+            return dataUrl; // fall back to inline base64 so the upload still "works" for the user
+        }
+        return `${SB_URL}/storage/v1/object/public/${SB_BUCKET}/${path}`;
+    } catch (e) {
+        console.error("uploadToStorage exception:", e);
+        return dataUrl;
+    }
+}
 // Compress image before storing to keep payload small
 function compressImg(file, maxW, maxH, quality = 0.75) {
     return new Promise(resolve => {
@@ -347,11 +376,11 @@ function ResidentsPage({ people, setPeople, rels, setRels, th, isDark, showToast
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 5 } },
                             React.createElement("label", { htmlFor: "add-avatar", style: { width: 64, height: 64, borderRadius: "50%", border: `2px dashed ${th.divider}`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden" } }, form.img ? React.createElement("img", { src: form.img, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 20, opacity: 0.35 } }, "\uD83D\uDCF7")),
                             React.createElement("span", { style: { fontSize: 9, color: th.textMuted, fontWeight: 600, letterSpacing: 0.5 } }, "AVATAR"),
-                            React.createElement("input", { id: "add-avatar", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 200, 200).then(src => setForm(f => ({ ...f, img: src }))) })),
+                            React.createElement("input", { id: "add-avatar", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 200, 200).then(src => uploadToStorage(src, "avatar")).then(src => setForm(f => ({ ...f, img: src }))) })),
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 5 } },
                             React.createElement("label", { htmlFor: "add-portrait", style: { width: 72, height: 96, borderRadius: 6, border: `2px dashed ${th.divider}`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden" } }, form.portrait ? React.createElement("img", { src: form.portrait, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 20, opacity: 0.35 } }, "\uD83D\uDDBC")),
                             React.createElement("span", { style: { fontSize: 9, color: th.textMuted, fontWeight: 600, letterSpacing: 0.5 } }, "PORTRAIT"),
-                            React.createElement("input", { id: "add-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => setForm(f => ({ ...f, portrait: src }))) }))),
+                            React.createElement("input", { id: "add-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => uploadToStorage(src, "portrait")).then(src => setForm(f => ({ ...f, portrait: src }))) }))),
                     React.createElement("input", { value: form.name, onChange: e => setForm(f => ({ ...f, name: e.target.value })), placeholder: "Name...", style: { padding: "10px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 14, fontWeight: 600, outline: "none", fontFamily: "inherit" } }),
                     React.createElement("input", { value: form.age, onChange: e => setForm(f => ({ ...f, age: e.target.value })), onKeyDown: e => e.key === "Enter" && add(), placeholder: "Age", style: { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%" } }),
                     React.createElement("input", { value: form.occupation, onChange: e => setForm(f => ({ ...f, occupation: e.target.value })), onKeyDown: e => e.key === "Enter" && add(), placeholder: "Occupation \u8077\u696D", style: { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%" } }),
@@ -503,7 +532,7 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                 React.createElement("label", { htmlFor: "loc-img", style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.panel, color: th.textSub, fontSize: 12, cursor: "pointer" } },
                     locForm.img ? React.createElement("img", { src: locForm.img, style: { width: 32, height: 32, objectFit: "cover", borderRadius: 4 } }) : React.createElement("span", null, "\uD83D\uDDBC\uFE0F"),
                     React.createElement("span", null, locForm.img ? "Change image" : "Add image (optional)")),
-                React.createElement("input", { id: "loc-img", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 800, 800, 0.8).then(src => setLocForm(f => ({ ...f, img: src }))) }),
+                React.createElement("input", { id: "loc-img", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 800, 800, 0.8).then(src => uploadToStorage(src, "location")).then(src => setLocForm(f => ({ ...f, img: src }))) }),
                 React.createElement("div", { style: { display: "flex", gap: 8 } },
                     React.createElement("button", { onClick: addLocation, disabled: !locForm.name.trim(), style: { flex: 1, padding: "8px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: locForm.name.trim() ? 1 : 0.5 } }, "Add"),
                     React.createElement("button", { onClick: () => setShowAddLoc(false), style: { padding: "8px 12px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Cancel"))),
@@ -1106,7 +1135,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("input", { id: inputId, type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
                                         if (!e.target.files[0])
                                             return;
-                                        compressImg(e.target.files[0], 400, 600).then(src => {
+                                        compressImg(e.target.files[0], 400, 600).then(src => uploadToStorage(src, "extra")).then(src => {
                                             const base = [...extraPhotos];
                                             base[i] = src;
                                             onUpdate(person.id, isDark ? { nightExtraPhotos: base } : { extraPhotos: base });
@@ -1126,9 +1155,9 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("label", { htmlFor: "ep-avatar", style: { position: "relative", cursor: "pointer", flexShrink: 0 } },
                                     React.createElement(Avatar, { p: { ...person, img: f.img }, size: 44, th: th }),
                                     React.createElement("div", { style: { position: "absolute", inset: 0, borderRadius: 5, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 } }, "\uD83D\uDCF7")),
-                                React.createElement("input", { id: "ep-avatar", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 200, 200).then(src => { setF(x => ({ ...x, img: src })); onUpdate(person.id, { img: src }); }) }),
+                                React.createElement("input", { id: "ep-avatar", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 200, 200).then(src => uploadToStorage(src, "avatar")).then(src => { setF(x => ({ ...x, img: src })); onUpdate(person.id, { img: src }); }) }),
                                 React.createElement("label", { htmlFor: "ep-portrait", style: { cursor: "pointer", flexShrink: 0, width: 36, height: 48, borderRadius: 4, overflow: "hidden", border: `1.5px dashed ${th.divider}`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center" } }, f.portrait ? React.createElement("img", { src: f.portrait, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 13, opacity: 0.4 } }, "\uD83D\uDDBC")),
-                                React.createElement("input", { id: "ep-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => { setF(x => ({ ...x, portrait: src })); onUpdate(person.id, { portrait: src }); }) }),
+                                React.createElement("input", { id: "ep-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => uploadToStorage(src, "portrait")).then(src => { setF(x => ({ ...x, portrait: src })); onUpdate(person.id, { portrait: src }); }) }),
                                 React.createElement("input", { value: f.name, onChange: e => { const v = e.target.value; setF(x => ({ ...x, name: v })); onUpdate(person.id, { name: v }); }, placeholder: "Name", style: { ...iStyle, fontWeight: 700 } })),
                             React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 } },
                                 React.createElement("input", { value: f.age, onChange: e => { const v = e.target.value; setF(x => ({ ...x, age: v })); onUpdate(person.id, { age: v }); }, placeholder: "Age", style: iStyle }),
@@ -1143,7 +1172,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 } }, "\uD83C\uDF19 Night Mode Overrides"),
                                 React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", marginBottom: 8 } },
                                     React.createElement("label", { htmlFor: "ep-night-portrait", style: { cursor: "pointer", flexShrink: 0, width: 40, height: 54, borderRadius: 4, overflow: "hidden", border: `1.5px dashed ${th.accent}66`, background: th.panel, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" } }, person.nightPortrait ? React.createElement("img", { src: person.nightPortrait, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 13, opacity: 0.5 } }, "\uD83C\uDF19")),
-                                    React.createElement("input", { id: "ep-night-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => onUpdate(person.id, { nightPortrait: src })) }),
+                                    React.createElement("input", { id: "ep-night-portrait", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => e.target.files[0] && compressImg(e.target.files[0], 600, 900).then(src => uploadToStorage(src, "night")).then(src => onUpdate(person.id, { nightPortrait: src })) }),
                                     React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", gap: 6 } },
                                         React.createElement("input", { value: person.nightName || "", onChange: e => onUpdate(person.id, { nightName: e.target.value }), placeholder: "Night name (optional)", style: { ...iStyle, fontSize: 12 } }),
                                         person.nightPortrait && React.createElement("button", { onClick: () => onUpdate(person.id, { nightPortrait: null }), style: { fontSize: 9, color: th.red, background: "transparent", border: `1px solid ${th.red}44`, borderRadius: 3, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-start" } }, "Remove \uD83C\uDF19 photo")))))))),
@@ -1208,7 +1237,7 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1.5, textTransform: "uppercase" } }, "\u65B0\u589E\u7ACB\u7E6A"),
                         React.createElement("label", { htmlFor: "ill-upload", style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 5, border: `1.5px dashed ${th.accent}66`, cursor: "pointer", color: th.accent, fontSize: 12, fontWeight: 600 } }, "\uD83D\uDDBC \u4E0A\u50B3\u7ACB\u7E6A\u5716"),
                         React.createElement("input", { id: "ill-upload", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => { if (!e.target.files[0])
-                                return; compressImg(e.target.files[0], 400, 700, 0.85).then(img => { const id = "ill_" + Date.now(); const newIllus = [...illus, { id, img, label: "" }]; onUpdate(person.id, { illustrations: newIllus }); }); } }))),
+                                return; compressImg(e.target.files[0], 400, 700, 0.85).then(src => uploadToStorage(src, "illus")).then(img => { const id = "ill_" + Date.now(); const newIllus = [...illus, { id, img, label: "" }]; onUpdate(person.id, { illustrations: newIllus }); }); } }))),
                     illus.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "32px", color: th.textMuted, fontSize: 12 } },
                         "\u5C1A\u672A\u4E0A\u50B3\u7ACB\u7E6A",
                         React.createElement("br", null),

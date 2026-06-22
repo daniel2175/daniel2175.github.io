@@ -613,26 +613,41 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                             React.createElement("button", { onClick: () => setWizStep("scenario"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
                             React.createElement("button", { onClick: () => draft.memberIds.length >= 2 && setWizStep("dialogue"), disabled: draft.memberIds.length < 2, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: draft.memberIds.length >= 2 ? th.accent : th.panel, color: draft.memberIds.length >= 2 ? "#fff" : th.textMuted, fontSize: 12, fontWeight: 700, cursor: draft.memberIds.length >= 2 ? "pointer" : "not-allowed", fontFamily: "inherit" } }, "Next →"))),
                     wizStep === "dialogue" && React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 10 } }, "每句台詞選說話角色"),
-                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: "45dvh", overflowY: "auto", marginBottom: 10 } },
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 10 } }, "每句台詞選說話角色，並可從立繪庫選立繪"),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, maxHeight: "45dvh", overflowY: "auto", marginBottom: 10 } },
                             dlgLines.map((line, li) => {
                                 const speaker = people.find(p => p.id === line.speakerId) || draft.memberIds.map(id => people.find(p => p.id === id)).filter(Boolean)[0];
-                                return React.createElement("div", { key: li, style: { background: th.panel, borderRadius: 6, padding: "8px 10px", border: `1px solid ${th.divider}` } },
-                                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", overflowX: "auto", paddingBottom: 2 } },
+                                const speakerIllus = speaker?.illustrations || [];
+                                return React.createElement("div", { key: li, style: { background: th.panel, borderRadius: 8, padding: "10px", border: `1px solid ${th.divider}` } },
+                                    React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 } }, "說話者"),
+                                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", overflowX: "auto", paddingBottom: 4, marginBottom: 8 } },
                                         draft.memberIds.map(id => {
                                             const p = people.find(x => x.id === id);
                                             if (!p) return null;
                                             const photo = p.portrait || p.img;
                                             const sel = line.speakerId === id;
-                                            return React.createElement("div", { key: id, onClick: () => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, speakerId: id } : l)), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", flexShrink: 0 } },
+                                            return React.createElement("div", { key: id, onClick: () => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, speakerId: id, portraitId: "" } : l)), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", flexShrink: 0 } },
                                                 React.createElement("div", { style: { width: 34, height: 46, borderRadius: 4, overflow: "hidden", border: `2px solid ${sel ? th.accent : th.cardBorder}`, opacity: sel ? 1 : 0.5 } },
                                                     photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: th.textMuted } }, p.name[0])),
                                                 React.createElement("span", { style: { fontSize: 8, color: sel ? th.accent : th.textMuted, width: 36, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name));
                                         })),
-                                    React.createElement("input", { value: line.text, onChange: e => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, text: e.target.value } : l)), placeholder: "台詞...", style: { ...iStyle, marginTop: 8, padding: "6px 8px", fontSize: 12 } }),
-                                    React.createElement("button", { onClick: () => setDlgLines(prev => prev.filter((_, i) => i !== li)), style: { width: 24, height: 24, borderRadius: "50%", border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 12, cursor: "pointer", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center" } }, "✕"));
+                                    speakerIllus.length > 0 && React.createElement(React.Fragment, null,
+                                        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 } }, "立繪"),
+                                        React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 8 } },
+                                            React.createElement("div", { onClick: () => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, portraitId: "" } : l)), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", flexShrink: 0 } },
+                                                React.createElement("div", { style: { width: 34, height: 46, borderRadius: 4, border: `2px solid ${!line.portraitId ? th.accent : th.cardBorder}`, background: th.card, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: th.textMuted } }, "預設"),
+                                                React.createElement("span", { style: { fontSize: 7, color: !line.portraitId ? th.accent : th.textMuted } }, "預設")),
+                                            speakerIllus.map(ill =>
+                                                React.createElement("div", { key: ill.id, onClick: () => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, portraitId: ill.id } : l)), style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", flexShrink: 0 } },
+                                                    React.createElement("div", { style: { width: 34, height: 46, borderRadius: 4, overflow: "hidden", border: `2px solid ${line.portraitId === ill.id ? th.accent : th.cardBorder}` } },
+                                                        React.createElement("img", { src: ill.img, style: { width: "100%", height: "100%", objectFit: "cover" } })),
+                                                    React.createElement("span", { style: { fontSize: 7, color: line.portraitId === ill.id ? th.accent : th.textMuted, maxWidth: 34, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, ill.label || ""))
+                                            ))),
+                                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } },
+                                        React.createElement("input", { value: line.text, onChange: e => setDlgLines(prev => prev.map((l, i) => i === li ? { ...l, text: e.target.value } : l)), placeholder: "台詞...", style: { ...iStyle, flex: 1, padding: "6px 8px", fontSize: 12 } }),
+                                        React.createElement("button", { onClick: () => setDlgLines(prev => prev.filter((_, i) => i !== li)), style: { width: 24, height: 24, borderRadius: "50%", border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 12, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, "✕")));
                             })),
-                        React.createElement("button", { onClick: () => setDlgLines(prev => [...prev, { text: "", speakerId: draft.memberIds[0] || null }]), style: { width: "100%", padding: "8px", borderRadius: 4, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 } }, "+ 加一句台詞"),
+                        React.createElement("button", { onClick: () => setDlgLines(prev => [...prev, { text: "", speakerId: draft.memberIds[0] || null, portraitId: "" }]), style: { width: "100%", padding: "8px", borderRadius: 4, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 } }, "+ 加一句台詞"),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
                             React.createElement("button", { onClick: () => setWizStep("members"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
                             React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "開始行動！")))))));
@@ -787,6 +802,11 @@ function App() {
                 return;
             }
             if (!isAllEmpty) hadDataOnce.current = true;
+            // Local backup: keep a copy on this device regardless of cloud outcome.
+            // This is a safety net if the cloud row ever gets overwritten/corrupted.
+            try {
+                localStorage.setItem("tstoc_backup", JSON.stringify({ data: s, savedAt: new Date().toISOString() }));
+            } catch (e) { /* localStorage unavailable or full — non-fatal */ }
             const ok = await sbSave(s);
             if (!ok) {
                 setSyncStatus("error");
@@ -796,8 +816,10 @@ function App() {
     }, [people, rels, events, messages, houses, actions, locations]);
     // Force-save on page hide using ref (no stale closure)
     useEffect(() => {
-        const save = () => { if (loaded.current)
-            sbSave(latestState.current); };
+        const save = () => { if (loaded.current) {
+            try { localStorage.setItem("tstoc_backup", JSON.stringify({ data: latestState.current, savedAt: new Date().toISOString() })); } catch (e) {}
+            sbSave(latestState.current);
+        } };
         const onVis = () => { if (document.visibilityState === "hidden")
             save(); };
         document.addEventListener("visibilitychange", onVis);
@@ -824,6 +846,65 @@ function App() {
             showToast("❌ 同步失敗，請檢查網路後再試");
         }
         setLoadingFromCloud(false);
+    };
+    // ── Manual JSON export/import (independent backup, not tied to Supabase) ──
+    const exportData = () => {
+        const payload = { ...latestState.current, exportedAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `tstoc_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("📦 已匯出備份檔");
+    };
+    const importFileRef = useRef(null);
+    const importData = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const parsed = JSON.parse(ev.target.result);
+                setPeople(parsed.people || []);
+                setRels(parsed.rels || []);
+                setEvents(parsed.events || []);
+                setMessages(parsed.messages || []);
+                setHouses(parsed.houses || []);
+                setActions(parsed.actions || []);
+                setLocations(parsed.locations || []);
+                hadDataOnce.current = true;
+                loaded.current = true; // allow this restored data to be saved back to cloud
+                showToast("✅ 已從檔案匯入資料");
+            } catch (err) {
+                showToast("❌ 檔案格式錯誤，匯入失敗");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ""; // allow re-selecting the same file later
+    };
+    const restoreLocalBackup = () => {
+        try {
+            const raw = localStorage.getItem("tstoc_backup");
+            if (!raw) { showToast("⚠️ 此裝置沒有本地備份"); return; }
+            const parsed = JSON.parse(raw);
+            const s = parsed.data || {};
+            setPeople(s.people || []);
+            setRels(s.rels || []);
+            setEvents(s.events || []);
+            setMessages(s.messages || []);
+            setHouses(s.houses || []);
+            setActions(s.actions || []);
+            setLocations(s.locations || []);
+            hadDataOnce.current = true;
+            loaded.current = true;
+            showToast(`✅ 已還原本地備份（${new Date(parsed.savedAt).toLocaleString()}）`);
+        } catch (e) {
+            showToast("❌ 本地備份讀取失敗");
+        }
     };
     const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
     const th = T[appMode];
@@ -930,8 +1011,9 @@ function App() {
                             action.scenario)),
                     React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
                 React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center" } }, members.map((p, i) => {
-                    const photo = isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img;
                     const isSpeaker = speaker?.id === p.id;
+                    const overrideIll = isSpeaker && curLine.portraitId ? (p.illustrations || []).find(ill => ill.id === curLine.portraitId) : null;
+                    const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
                     const offsetX = members.length === 1 ? 0 : ((i / (Math.max(1, members.length - 1))) - 0.5) * 80;
                     return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", transform: `scale(${isSpeaker ? 1 : 0.85}) translateX(${offsetX}px)`, transition: "transform 0.3s", zIndex: isSpeaker ? 2 : 1, opacity: isSpeaker ? 1 : 0.65 } },
                         React.createElement("div", { style: { width: 140, height: 220, overflow: "hidden" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));

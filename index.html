@@ -1170,7 +1170,16 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                                 person.height),
                             person.personality && React.createElement("span", { style: { fontSize: 11, color: th.tagText, background: th.tag, borderRadius: 3, padding: "2px 7px", flexShrink: 0 } },
                                 "\u2726 ",
-                                person.personality))));
+                                person.personality)),
+                        isDark && person.gender === "male" && React.createElement("div", { style: { padding: "10px 16px 0" } },
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+                                React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 0.5 } }, "\u7522\u7CBE\u91CF"),
+                                React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#fff" } }, (person.semenLevel ?? 100), "%")),
+                            React.createElement("div", { style: { position: "relative", height: 10, borderRadius: 5, background: "rgba(255,255,255,0.15)", overflow: "hidden" } },
+                                React.createElement("div", { style: { position: "absolute", inset: 0, width: `${Math.min(100, (person.semenLevel ?? 100))}%`, background: "#fff", borderRadius: 5, transition: "width 0.15s" } }),
+                                (person.semenLevel ?? 100) > 100 && React.createElement("div", { style: { position: "absolute", left: "100%", top: 0, bottom: 0, width: `${Math.min(20, (person.semenLevel ?? 100) - 100)}%`, background: "#FBBF24", transform: "translateX(-100%)", marginLeft: "-0%" } })),
+                            React.createElement("input", { type: "range", min: 0, max: 120, value: person.semenLevel ?? 100, onChange: e => onUpdate(person.id, { semenLevel: parseInt(e.target.value) }), style: { width: "100%", marginTop: 6, accentColor: "#fff", height: 18 } }),
+                            React.createElement("input", { type: "number", min: 0, max: 120, value: person.semenLevel ?? 100, onChange: e => { const v = Math.max(0, Math.min(120, parseInt(e.target.value) || 0)); onUpdate(person.id, { semenLevel: v }); }, style: { width: 64, marginTop: 6, padding: "4px 6px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 11, fontFamily: "inherit", textAlign: "center" } }))));
                 })(),
                 (() => {
                     const dayBio = person.bio || "";

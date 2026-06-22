@@ -695,7 +695,6 @@ function App() {
     const [splashFading, setSplashFading] = useState(false);
     const [syncStatus, setSyncStatus] = useState("idle");
     const [toast, setToast] = useState(null);
-    const saveTimer = useRef(null);
     const loaded = useRef(false);
     const hadDataOnce = useRef(false); // tracks whether we've ever seen non-empty state, for the empty-save safety guard
     // Always keep a ref to latest state so saves never use stale closures
@@ -755,84 +754,32 @@ function App() {
         }
         return true;
     };
-    // Initial load
+    // Initial load: pull once when the app opens, so you start with your last saved data.
+    // After this, nothing syncs automatically — use the Sync/Save buttons to control timing yourself.
     useEffect(() => {
         const finish = () => {
             setSplashFading(true);
             setTimeout(() => setAppReady(true), 500);
         };
         const timeout = setTimeout(() => {
-            // Timed out waiting for cloud response. Do NOT set loaded.current = true —
-            // this keeps autosave disabled so we never overwrite cloud data with
-            // an empty/incomplete local state. User can still browse; once a
-            // real sync succeeds (e.g. on next visibility change), autosave turns on.
             finish();
         }, 6000);
         loadCloud().then((success) => {
             clearTimeout(timeout);
-            if (success) loaded.current = true; // only enable autosave if the cloud request actually completed
+            if (success) loaded.current = true;
             finish();
         }).catch(() => {
             clearTimeout(timeout);
-            // Genuine error — leave loaded.current = false (autosave stays off)
             finish();
         });
-    }, []);
-    // Sync from cloud only on visibility change — no polling (prevents mid-edit overwrites)
-    useEffect(() => {
-        const onVis = () => {
-            if (document.visibilityState === "visible" && loaded.current && !profileId)
-                loadCloud();
-        };
-        document.addEventListener("visibilitychange", onVis);
-        window.addEventListener("pageshow", () => { if (loaded.current && !profileId)
-            loadCloud(); });
-        return () => { document.removeEventListener("visibilitychange", onVis); };
-    }, [profileId]);
-    // Debounced auto-save: fires 1s after last change, always uses latestState ref
-    useEffect(() => {
-        if (!loaded.current)
-            return;
-        clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(async () => {
-            const s = latestState.current;
-            const isAllEmpty = !(s.people?.length || s.houses?.length || s.actions?.length || s.locations?.length || s.rels?.length || s.events?.length || s.messages?.length);
-            if (isAllEmpty && hadDataOnce.current) {
-                // Safety guard: state suddenly went from "had data" to "completely empty".
-                // This is almost certainly a sync glitch, not an intentional bulk-delete.
-                // Skip this autosave so we don't overwrite cloud data with nothing.
-                console.warn("Skipped autosave: state is unexpectedly empty after previously having data.");
-                return;
-            }
-            if (!isAllEmpty) hadDataOnce.current = true;
-            // Local backup: keep a copy on this device regardless of cloud outcome.
-            // This is a safety net if the cloud row ever gets overwritten/corrupted.
-            try {
-                localStorage.setItem("tstoc_backup", JSON.stringify({ data: s, savedAt: new Date().toISOString() }));
-            } catch (e) { /* localStorage unavailable or full — non-fatal */ }
-            const ok = await sbSave(s);
-            if (!ok) {
-                setSyncStatus("error");
-                setTimeout(() => setSyncStatus("idle"), 3000);
-            }
-        }, 1000);
-    }, [people, rels, events, messages, houses, actions, locations]);
-    // Force-save on page hide using ref (no stale closure)
-    useEffect(() => {
-        const save = () => { if (loaded.current) {
-            try { localStorage.setItem("tstoc_backup", JSON.stringify({ data: latestState.current, savedAt: new Date().toISOString() })); } catch (e) {}
-            sbSave(latestState.current);
-        } };
-        const onVis = () => { if (document.visibilityState === "hidden")
-            save(); };
-        document.addEventListener("visibilitychange", onVis);
-        window.addEventListener("pagehide", save);
-        return () => { document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pagehide", save); };
     }, []);
     const manualSave = async () => {
         if (syncStatus === "saving")
             return;
         setSyncStatus("saving");
+        try {
+            localStorage.setItem("tstoc_backup", JSON.stringify({ data: latestState.current, savedAt: new Date().toISOString() }));
+        } catch (e) { /* localStorage unavailable or full — non-fatal */ }
         const ok = await sbSave(latestState.current);
         setSyncStatus(ok ? "saved" : "error");
         setTimeout(() => setSyncStatus("idle"), 3000);

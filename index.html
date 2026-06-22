@@ -129,13 +129,13 @@ async function sbSave(state) {
         if (!r.ok) {
             const txt = await r.text().catch(() => "");
             console.error("sbSave failed:", r.status, txt);
-            return false;
+            return { ok: false, status: r.status, message: txt };
         }
-        return true;
+        return { ok: true };
     }
     catch (e) {
         console.error("sbSave exception:", e);
-        return false;
+        return { ok: false, status: 0, message: e.message || String(e) };
     }
 }
 const BG_DAY = "var(--bg-day)";
@@ -780,8 +780,12 @@ function App() {
         try {
             localStorage.setItem("tstoc_backup", JSON.stringify({ data: latestState.current, savedAt: new Date().toISOString() }));
         } catch (e) { /* localStorage unavailable or full — non-fatal */ }
-        const ok = await sbSave(latestState.current);
-        setSyncStatus(ok ? "saved" : "error");
+        const result = await sbSave(latestState.current);
+        setSyncStatus(result.ok ? "saved" : "error");
+        if (!result.ok) {
+            const detail = result.status ? `(${result.status}) ${(result.message || "").slice(0, 120)}` : (result.message || "網路連線失敗");
+            showToast(`❌ 儲存失敗 ${detail}`, 6000);
+        }
         setTimeout(() => setSyncStatus("idle"), 3000);
     };
     const [loadingFromCloud, setLoadingFromCloud] = useState(false);
@@ -856,7 +860,7 @@ function App() {
             showToast("❌ 本地備份讀取失敗");
         }
     };
-    const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+    const showToast = (msg, duration = 2500) => { setToast(msg); setTimeout(() => setToast(null), duration); };
     const th = T[appMode];
     const isDark = th.isDark;
     if (!appReady)

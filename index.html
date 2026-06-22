@@ -812,6 +812,19 @@ function App() {
         setSyncStatus(ok ? "saved" : "error");
         setTimeout(() => setSyncStatus("idle"), 3000);
     };
+    const [loadingFromCloud, setLoadingFromCloud] = useState(false);
+    const manualLoad = async () => {
+        if (loadingFromCloud) return;
+        setLoadingFromCloud(true);
+        const success = await loadCloud();
+        if (success) {
+            loaded.current = true;
+            showToast("✅ 已從雲端同步");
+        } else {
+            showToast("❌ 同步失敗，請檢查網路後再試");
+        }
+        setLoadingFromCloud(false);
+    };
     const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
     const th = T[appMode];
     const isDark = th.isDark;
@@ -852,6 +865,12 @@ function App() {
                         React.createElement("circle", { cx: "12", cy: "12", r: "5" }),
                         React.createElement("path", { d: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42", fill: "none", stroke: "#E8A020", strokeWidth: "2", strokeLinecap: "round" })),
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textSub, letterSpacing: 0.5 } }, isDark ? "NIGHT" : "DAY")),
+                React.createElement("button", { onClick: manualLoad, disabled: loadingFromCloud, style: { display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.card, color: th.textSub, cursor: loadingFromCloud ? "not-allowed" : "pointer", fontFamily: "inherit", flexShrink: 0 } },
+                    React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: th.textSub, strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: loadingFromCloud ? "spin-icon" : "" },
+                        React.createElement("path", { d: "M23 4v6h-6" }),
+                        React.createElement("path", { d: "M1 20v-6h6" }),
+                        React.createElement("path", { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" })),
+                    React.createElement("span", { style: { fontSize: 9, fontWeight: 700, letterSpacing: 0.5 } }, loadingFromCloud ? "同步中" : "同步")),
                 React.createElement("button", { onClick: manualSave, disabled: syncStatus === "saving", style: { display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 4, border: `1px solid ${syncStatus === "saved" ? th.green : syncStatus === "error" ? th.red : th.divider}`, background: syncStatus === "saved" ? th.green + "18" : th.card, color: syncStatus === "saved" ? th.green : syncStatus === "error" ? th.red : th.textSub, cursor: syncStatus === "saving" ? "not-allowed" : "pointer", fontFamily: "inherit", flexShrink: 0 } },
                     syncStatus === "saving" ? React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: th.textMuted, strokeWidth: "2", className: "spin-icon" },
                         React.createElement("path", { d: "M21 12a9 9 0 1 1-6.219-8.56" })) : syncStatus === "saved" ? React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: th.green, strokeWidth: "2.5" },

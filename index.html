@@ -957,7 +957,11 @@ function App() {
                 setActiveScene(null);
                 return null;
             }
-            const members = people.filter(p => action.memberIds.includes(p.id));
+            const members = people.filter(p => action.memberIds.includes(p.id))
+                .sort((a, b) => {
+                    const rank = g => g === "male" ? 0 : g === "female" ? 1 : 0.5;
+                    return rank(a.gender) - rank(b.gender);
+                });
             const scn = scenarios.find(s => s.name === action.scenario);
             const hasCustom = action.customDialogue && action.customDialogue.length > 0 && action.customDialogue[0].text !== undefined;
             const defaultLines = (DIALOG_LINES[action.scenario] || ["..."]).map((t, i) => ({ text: t, speakerId: members[i % members.length]?.id || null, portraitId: "" }));
@@ -993,13 +997,24 @@ function App() {
                             " ",
                             action.scenario)),
                     React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F")),
-                React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden" } }, members.map((p, i) => {
+                React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden", gap: members.length > 1 ? "2vw" : 0, padding: "0 4px", boxSizing: "border-box" } }, members.map((p, i) => {
                     const isSpeaker = speaker?.id === p.id;
                     const overrideIll = isSpeaker && curLine.portraitId ? (p.illustrations || []).find(ill => ill.id === curLine.portraitId) : null;
                     const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
-                    const offsetX = members.length === 1 ? 0 : ((i / (Math.max(1, members.length - 1))) - 0.5) * 140;
-                    return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", transform: `scale(${isSpeaker ? 1 : 0.85}) translateX(${offsetX}px)`, transition: "transform 0.3s", zIndex: isSpeaker ? 2 : 1, opacity: isSpeaker ? 1 : 0.65 } },
-                        React.createElement("div", { style: { width: "min(85vw, 360px)", height: "min(88dvh, 620px)", overflow: "hidden", background: "transparent" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "contain", objectPosition: "center bottom", display: "block" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
+                    const n = members.length;
+                    // Scale width down as more characters share the screen, so they
+                    // never overlap or get pushed past the viewport edges.
+                    // Positioning is pure flexbox (no transform/translateX), so portraits
+                    // are guaranteed to stay within the visible container on every platform.
+                    const widthVw = n === 1 ? 58 : n === 2 ? 50 : n === 3 ? 36 : 28;
+                    const widthPx = n === 1 ? 260 : n === 2 ? 240 : n === 3 ? 190 : 160;
+                    const negMargin = n > 1 ? `-${Math.max(0, 14 - n * 2)}vw` : "0";
+                    // Female characters are layered in front by default (higher base z-index);
+                    // the active speaker still takes top priority regardless of gender.
+                    const baseZ = p.gender === "female" ? 1 : 0;
+                    const zIdx = isSpeaker ? 3 : baseZ + 1;
+                    return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, marginLeft: i > 0 ? negMargin : 0, transform: `scale(${isSpeaker ? 1 : 0.85})`, transformOrigin: "bottom center", transition: "transform 0.3s", zIndex: zIdx, opacity: isSpeaker ? 1 : 0.65 } },
+                        React.createElement("div", { style: { width: `min(${widthVw}vw, ${widthPx}px)`, height: "min(88dvh, 620px)", overflow: "hidden", background: "transparent" } }, photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "contain", objectPosition: "center bottom", display: "block" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
                 })),
                 React.createElement("div", { onClick: nextDlg, style: { position: "relative", zIndex: 3, padding: "0 12px", paddingBottom: "max(calc(env(safe-area-inset-bottom,0px) + 16px),20px)", cursor: "pointer" } },
                     React.createElement("div", { style: { background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px" } },

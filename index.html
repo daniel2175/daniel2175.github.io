@@ -1035,10 +1035,15 @@ function App() {
             // from the start of the dialogue through the current line. A character's
             // position persists across lines until a line explicitly assigns them a new one.
             const lastPositionByMember = {};
+            // Track each character's most recently assigned flip state the same way —
+            // once a line sets flipped on/off for its speaker, that state persists for
+            // that character across later lines until another line changes it again.
+            const lastFlippedByMember = {};
             for (let li = 0; li <= safeIdx; li++) {
                 const ln = lines[li];
-                if (ln && ln.speakerId != null && ln.position) {
-                    lastPositionByMember[ln.speakerId] = ln.position;
+                if (ln && ln.speakerId != null) {
+                    if (ln.position) lastPositionByMember[ln.speakerId] = ln.position;
+                    if (typeof ln.flipped === "boolean") lastFlippedByMember[ln.speakerId] = ln.flipped;
                 }
             }
             const members = [...genderSortedMembers].sort((a, b) => {
@@ -1115,7 +1120,7 @@ function App() {
                     const marginLeft = n === 1 ? (singlePos === "right" ? "auto" : singlePos === "left" ? 0 : "auto") : (i > 0 ? negMargin : "auto");
                     const marginRight = n === 1 ? (singlePos === "left" ? "auto" : singlePos === "right" ? 0 : "auto") : (i === n - 1 ? "auto" : 0);
                     return (React.createElement("div", { key: p.id, style: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", flexShrink: 0, flexGrow: 0, marginLeft: marginLeft, marginRight: marginRight, transform: `scale(${isSpeaker ? 1 : 0.85})`, transformOrigin: "bottom center", transition: "transform 0.3s", zIndex: zIdx, opacity: isSpeaker ? 1 : 0.65 } },
-                        React.createElement("div", { style: { width: `min(${widthVw}vw, ${widthPx}px)`, maxWidth: "100%", height: "min(90dvh, 640px)", overflow: "hidden", background: "transparent", margin: "0 auto", display: "flex", alignItems: "flex-end", justifyContent: "center" } }, photo ? React.createElement("img", { src: photo, style: { maxWidth: "100%", height: "100%", width: "auto", objectFit: "contain", objectPosition: "bottom", display: "block", transform: (isSpeaker && curLine.flipped) ? "scaleX(-1)" : "none" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
+                        React.createElement("div", { style: { width: `min(${widthVw}vw, ${widthPx}px)`, maxWidth: "100%", height: "min(90dvh, 640px)", overflow: "hidden", background: "transparent", margin: "0 auto", display: "flex", alignItems: "flex-end", justifyContent: "center" } }, photo ? React.createElement("img", { src: photo, style: { maxWidth: "100%", height: "100%", width: "auto", objectFit: "contain", objectPosition: "bottom", display: "block", transform: lastFlippedByMember[p.id] ? "scaleX(-1)" : "none" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
                 })),
                 React.createElement("div", { onClick: nextDlg, style: { position: "relative", zIndex: 3, padding: "0 12px", paddingBottom: "max(calc(env(safe-area-inset-bottom,0px) + 16px),20px)", cursor: "pointer" } },
                     React.createElement("div", { style: { background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px" } },

@@ -1021,6 +1021,17 @@ function App() {
                 return; setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: (dlgIdx + 1) % lines.length } : a)); };
             const speaker = members.find(p => p.id === curLine.speakerId) || members[safeIdx % Math.max(1, members.length)];
             const line = curLine.text;
+            // Track each character's most recently used portraitId, scanning from the
+            // start of the dialogue up through the current line. This way, a character
+            // keeps showing the portrait they last spoke with even while someone else
+            // is talking, instead of reverting to their default portrait.
+            const lastPortraitByMember = {};
+            for (let li = 0; li <= safeIdx; li++) {
+                const ln = lines[li];
+                if (ln && ln.speakerId != null) {
+                    lastPortraitByMember[ln.speakerId] = ln.portraitId || "";
+                }
+            }
             const endAction = () => {
                 if (scn && members.length >= 2) {
                     const pairs = [];
@@ -1049,7 +1060,8 @@ function App() {
                         React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F"))),
                 React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", overflow: "hidden", gap: members.length > 1 ? "2vw" : 0, padding: "0 4px", boxSizing: "border-box" } }, members.map((p, i) => {
                     const isSpeaker = speaker?.id === p.id;
-                    const overrideIll = isSpeaker && curLine.portraitId ? (p.illustrations || []).find(ill => ill.id === curLine.portraitId) : null;
+                    const lastPortraitId = lastPortraitByMember[p.id];
+                    const overrideIll = lastPortraitId ? (p.illustrations || []).find(ill => ill.id === lastPortraitId) : null;
                     const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
                     const n = members.length;
                     // Scale width down as more characters share the screen, so they

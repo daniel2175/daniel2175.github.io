@@ -1024,12 +1024,16 @@ function App() {
             // Track each character's most recently used portraitId, scanning from the
             // start of the dialogue up through the current line. This way, a character
             // keeps showing the portrait they last spoke with even while someone else
-            // is talking, instead of reverting to their default portrait.
+            // is talking, instead of reverting to their default portrait. Characters who
+            // haven't spoken yet (e.g. line 1 of the scene) show no portrait at all —
+            // they haven't "entered" the scene yet.
             const lastPortraitByMember = {};
+            const hasSpokenSet = new Set();
             for (let li = 0; li <= safeIdx; li++) {
                 const ln = lines[li];
                 if (ln && ln.speakerId != null) {
                     lastPortraitByMember[ln.speakerId] = ln.portraitId || "";
+                    hasSpokenSet.add(ln.speakerId);
                 }
             }
             const endAction = () => {
@@ -1062,6 +1066,7 @@ function App() {
                     const isSpeaker = speaker?.id === p.id;
                     const lastPortraitId = lastPortraitByMember[p.id];
                     const overrideIll = lastPortraitId ? (p.illustrations || []).find(ill => ill.id === lastPortraitId) : null;
+                    if (!hasSpokenSet.has(p.id)) return null; // character hasn't spoken yet — not "on screen" until their first line
                     const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
                     const n = members.length;
                     // Scale width down as more characters share the screen, so they

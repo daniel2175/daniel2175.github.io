@@ -1035,7 +1035,15 @@ function App() {
                 }
             }
             const members = [...genderSortedMembers].sort((a, b) => {
-                const posRank = id => lastPositionByMember[id] === "right" ? 1 : lastPositionByMember[id] === "left" ? 0 : (genderSortedMembers.findIndex(m => m.id === id) === 0 ? 0 : 0.5);
+                const n = genderSortedMembers.length;
+                const posRank = id => {
+                    if (lastPositionByMember[id] === "left") return -1;
+                    if (lastPositionByMember[id] === "right") return n; // always after every unset/left member
+                    // No explicit position set: keep this character's relative order from
+                    // the default gender sort, scaled into the middle of the range so it
+                    // never collides with an explicitly-set "left" (-1) or "right" (n) rank.
+                    return genderSortedMembers.findIndex(m => m.id === id);
+                };
                 return posRank(a.id) - posRank(b.id);
             });
             const speaker = members.find(p => p.id === curLine.speakerId) || members[safeIdx % Math.max(1, members.length)];

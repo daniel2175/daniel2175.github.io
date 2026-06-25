@@ -487,6 +487,186 @@ function FamilyPage({ people, houses, setHouses, th, showToast, onOpenProfile })
 }
 
 // ── ActionsPage ───────────────────────────────────────────────────────────
+function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, setRels, setPage, setEditActionRequest, isDark, showToast }) {
+    const scn = scenarios.find(s => s.name === action.scenario);
+    const hasCustom = action.customDialogue && action.customDialogue.length > 0 && action.customDialogue[0].text !== undefined;
+    const genderSortedMembers = people.filter(p => action.memberIds.includes(p.id))
+        .sort((a, b) => {
+            const rank = g => g === "male" ? 0 : g === "female" ? 1 : 0.5;
+            return rank(a.gender) - rank(b.gender);
+        });
+    const defaultLines = (DIALOG_LINES[action.scenario] || ["..."]).map((t, i) => ({ text: t, speakerId: genderSortedMembers[i % genderSortedMembers.length]?.id || null, portraitId: "" }));
+    const lines = hasCustom ? action.customDialogue.filter(l => l.text.trim()) : defaultLines;
+    const dlgIdx = action._dlgIdx || 0;
+    const safeIdx = lines.length > 0 ? Math.min(dlgIdx, lines.length - 1) : 0;
+    const curLine = lines[safeIdx] || { text: "...", speakerId: null, portraitId: "" };
+    const atLastLine = lines.length === 0 || safeIdx >= lines.length - 1;
+
+    // ── Typewriter effect ──────────────────────────────────────────────────
+    const [typedLen, setTypedLen] = useState(0);
+    const typewriterTimer = useRef(null);
+    const fullText = curLine.text || "";
+    useEffect(() => {
+        setTypedLen(0);
+        clearInterval(typewriterTimer.current);
+        if (!fullText) return;
+        typewriterTimer.current = setInterval(() => {
+            setTypedLen(prev => {
+                if (prev >= fullText.length) {
+                    clearInterval(typewriterTimer.current);
+                    return prev;
+                }
+                return prev + 1;
+            });
+        }, 28);
+        return () => clearInterval(typewriterTimer.current);
+    }, [safeIdx, fullText]);
+    const isTyping = typedLen < fullText.length;
+    const displayedText = fullText.slice(0, typedLen);
+
+    const nextDlg = () => {
+        if (lines.length === 0) return;
+        if (isTyping) {
+            // Tapping while still typing skips straight to the full line instead of advancing.
+            setTypedLen(fullText.length);
+            clearInterval(typewriterTimer.current);
+            return;
+        }
+        if (atLastLine) return; // stop at the last line — no auto-wrap back to the first
+        setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: safeIdx + 1 } : a));
+    };
+    const resetDlg = (e) => {
+        e.stopPropagation();
+        setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: 0 } : a));
+    };
+
+    // Track each character's most recently assigned left/right position, scanning
+    // from the start of the dialogue through the current line. A character's
+    // position persists across lines until a line explicitly assigns them a new one.
+    const lastPositionByMember = {};
+    // Track each character's most recently assigned flip state the same way —
+    // once a line sets flipped on/off for its speaker, that state persists for
+    // that character across later lines until another line changes it again.
+    const lastFlippedByMember = {};
+    for (let li = 0; li <= safeIdx; li++) {
+        const ln = lines[li];
+        if (ln && ln.speakerId != null) {
+            if (ln.position) lastPositionByMember[ln.speakerId] = ln.position;
+            if (typeof ln.flipped === "boolean") lastFlippedByMember[ln.speakerId] = ln.flipped;
+        }
+    }
+    const members = [...genderSortedMembers].sort((a, b) => {
+        const n = genderSortedMembers.length;
+        const posRank = id => {
+            if (lastPositionByMember[id] === "left") return -1;
+            if (lastPositionByMember[id] === "right") return n; // always after every unset/left member
+            // No explicit position set: keep this character's relative order from
+            // the default gender sort, scaled into the middle of the range so it
+            // never collides with an explicitly-set "left" (-1) or "right" (n) rank.
+            return genderSortedMembers.findIndex(m => m.id === id);
+        };
+        return posRank(a.id) - posRank(b.id);
+    });
+    const speaker = members.find(p => p.id === curLine.speakerId) || members[safeIdx % Math.max(1, members.length)];
+    // Track each character's most recently used portraitId, scanning from the
+    // start of the dialogue up through the current line. This way, a character
+    // keeps showing the portrait they last spoke with even while someone else
+    // is talking, instead of reverting to their default portrait.
+    const lastPortraitByMember = {};
+    for (let li = 0; li <= safeIdx; li++) {
+        const ln = lines[li];
+        if (ln && ln.speakerId != null) {
+            lastPortraitByMember[ln.speakerId] = ln.portraitId || "";
+        }
+    }
+    // The VN scene shows at most 2 characters on screen at once. Scanning
+    // backward from the current line, collect distinct speakers until we have
+    // 2 — this naturally drops the earliest speaker once a 3rd distinct person
+    // joins the conversation, while the most recent 2 stay visible.
+    const recentSpeakersOrdered = [];
+    for (let li = safeIdx; li >= 0; li--) {
+        const ln = lines[li];
+        if (ln && ln.speakerId != null && !recentSpeakersOrdered.includes(ln.speakerId)) {
+            recentSpeakersOrdered.push(ln.speakerId);
+            if (recentSpeakersOrdered.length >= 2) break;
+        }
+    }
+    const hasSpokenSet = new Set(recentSpeakersOrdered);
+    const endAction = () => {
+        if (scn && members.length >= 2) {
+            const pairs = [];
+            for (let i = 0; i < members.length; i++)
+                for (let j = i + 1; j < members.length; j++)
+                    pairs.push([members[i].id, members[j].id]);
+            setRels(prev => prev.map(r => { const ip = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a)); if (!ip)
+                return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(100, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } }; }));
+            showToast(`✅ 完成！親密度已更新`);
+        }
+        setActions(prev => prev.filter(a => a.id !== action.id));
+        setActiveScene(null);
+    };
+    return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, display: "flex", flexDirection: "column", background: "#000", overflow: "hidden" } },
+        React.createElement("div", { style: { position: "absolute", inset: 0, overflow: "hidden" } }, action.locationImg ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 } }) : React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(180deg,#1a2744,#0d1520)" } })),
+        React.createElement("div", { style: { position: "relative", zIndex: 2, padding: "10px 14px", paddingTop: "max(env(safe-area-inset-top,0px),10px)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(to bottom,rgba(0,0,0,0.7),transparent)" } },
+            React.createElement("button", { onClick: () => setActiveScene(null), style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
+            React.createElement("div", { style: { textAlign: "center" } },
+                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
+                React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
+                    " ",
+                    action.scenario)),
+            React.createElement("div", { style: { display: "flex", gap: 6 } },
+                React.createElement("button", { onClick: () => { setActiveScene(null); setPage("actions"); setEditActionRequest(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u270F\uFE0F"),
+                React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F"))),
+        React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", overflow: "hidden" } }, members.filter(p => hasSpokenSet.has(p.id)).map((p, i, visibleMembers) => {
+            const isSpeaker = speaker?.id === p.id;
+            const lastPortraitId = lastPortraitByMember[p.id];
+            const overrideIll = lastPortraitId ? (p.illustrations || []).find(ill => ill.id === lastPortraitId) : null;
+            const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
+            const n = visibleMembers.length;
+            const widthVw = 64;
+            const widthPx = 310;
+            // Female characters are layered in front by default (higher base z-index);
+            // the active speaker still takes top priority regardless of gender.
+            const baseZ = p.gender === "female" ? 1 : 0;
+            const zIdx = isSpeaker ? 3 : baseZ + 1;
+            const singlePos = n === 1 ? lastPositionByMember[p.id] : null; // "left" | "right" | undefined (defaults to centered)
+            // Absolute positioning anchored directly to the viewport edges — no
+            // flexbox math involved, so there's no risk of overflow from width
+            // calculations being slightly off. With 2 characters, the first is
+            // pinned to the left edge and the second to the right edge, letting
+            // their wide portraits overlap naturally in the middle.
+            let posStyle;
+            if (n === 1) {
+                if (singlePos === "left") posStyle = { left: 0 };
+                else if (singlePos === "right") posStyle = { right: 0 };
+                else posStyle = { left: "50%", transform: "translateX(-50%)" };
+            } else {
+                posStyle = i === 0 ? { left: 0 } : { right: 0 };
+            }
+            return (React.createElement("div", { key: p.id, style: { position: "absolute", bottom: 0, ...posStyle, display: "flex", flexDirection: "column", alignItems: "center", zIndex: zIdx, opacity: isSpeaker ? 1 : 0.65 } },
+                React.createElement("div", { style: { width: `min(${widthVw}vw, ${widthPx}px)`, height: "min(90dvh, 640px)", overflow: "hidden", background: "transparent", display: "flex", alignItems: "flex-end", justifyContent: "center", transform: `scale(${isSpeaker ? 1 : 0.85})`, transformOrigin: "bottom center", transition: "transform 0.3s" } }, photo ? React.createElement("img", { src: photo, style: { maxWidth: "100%", height: "100%", width: "auto", objectFit: "contain", objectPosition: "bottom", display: "block", transform: lastFlippedByMember[p.id] ? "scaleX(-1)" : "none" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
+        })),
+        React.createElement("div", { onClick: nextDlg, style: { position: "relative", zIndex: 3, padding: "0 12px", paddingBottom: "max(calc(env(safe-area-inset-bottom,0px) + 16px),20px)", cursor: "pointer" } },
+            React.createElement("div", { style: { background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 } },
+                    React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#E8A020" } }, speaker?.name || ""),
+                    atLastLine && !isTyping && React.createElement("button", { onClick: resetDlg, title: "\u91CD\u65B0\u64AD\u653E", style: { display: "flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, cursor: "pointer", padding: 0 } }, "\u27F3")),
+                React.createElement("div", { style: { fontSize: 14, color: "#fff", lineHeight: 1.7, minHeight: 46 } },
+                    displayedText,
+                    isTyping && React.createElement("span", { style: { opacity: 0.6 } }, "\u2588")),
+                React.createElement("div", { style: { textAlign: "right", marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)" } },
+                    isTyping ? "\u9EDE\u64CA\u8DF3\u904E" : atLastLine ? "\u5DF2\u7D50\u675F\u00B7\u6309 \u27F3 \u91CD\u64AD" : "\u9EDE\u64CA\u7E7C\u7E8C \u25B6",
+                    " (",
+                    lines.length > 0 ? safeIdx + 1 : 1,
+                    "/",
+                    Math.max(1, lines.length),
+                    ")")),
+            scn && React.createElement("div", { style: { marginTop: 6, display: "flex", gap: 6, justifyContent: "center" } },
+                React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
+                React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
+                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
+}
+
 function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast, setActiveScene, editRequest, onEditConsumed }) {
     const [scenarios, setScenarios] = useState(SCENARIOS);
     const [showWizard, setShowWizard] = useState(false);
@@ -1017,142 +1197,7 @@ function App() {
                 setActiveScene(null);
                 return null;
             }
-            const scn = scenarios.find(s => s.name === action.scenario);
-            const hasCustom = action.customDialogue && action.customDialogue.length > 0 && action.customDialogue[0].text !== undefined;
-            const genderSortedMembers = people.filter(p => action.memberIds.includes(p.id))
-                .sort((a, b) => {
-                    const rank = g => g === "male" ? 0 : g === "female" ? 1 : 0.5;
-                    return rank(a.gender) - rank(b.gender);
-                });
-            const defaultLines = (DIALOG_LINES[action.scenario] || ["..."]).map((t, i) => ({ text: t, speakerId: genderSortedMembers[i % genderSortedMembers.length]?.id || null, portraitId: "" }));
-            const lines = hasCustom ? action.customDialogue.filter(l => l.text.trim()) : defaultLines;
-            const dlgIdx = action._dlgIdx || 0;
-            const safeIdx = lines.length > 0 ? dlgIdx % lines.length : 0;
-            const curLine = lines[safeIdx] || { text: "...", speakerId: null, portraitId: "" };
-            const nextDlg = () => { if (lines.length === 0)
-                return; setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: (dlgIdx + 1) % lines.length } : a)); };
-            // Track each character's most recently assigned left/right position, scanning
-            // from the start of the dialogue through the current line. A character's
-            // position persists across lines until a line explicitly assigns them a new one.
-            const lastPositionByMember = {};
-            // Track each character's most recently assigned flip state the same way —
-            // once a line sets flipped on/off for its speaker, that state persists for
-            // that character across later lines until another line changes it again.
-            const lastFlippedByMember = {};
-            for (let li = 0; li <= safeIdx; li++) {
-                const ln = lines[li];
-                if (ln && ln.speakerId != null) {
-                    if (ln.position) lastPositionByMember[ln.speakerId] = ln.position;
-                    if (typeof ln.flipped === "boolean") lastFlippedByMember[ln.speakerId] = ln.flipped;
-                }
-            }
-            const members = [...genderSortedMembers].sort((a, b) => {
-                const n = genderSortedMembers.length;
-                const posRank = id => {
-                    if (lastPositionByMember[id] === "left") return -1;
-                    if (lastPositionByMember[id] === "right") return n; // always after every unset/left member
-                    // No explicit position set: keep this character's relative order from
-                    // the default gender sort, scaled into the middle of the range so it
-                    // never collides with an explicitly-set "left" (-1) or "right" (n) rank.
-                    return genderSortedMembers.findIndex(m => m.id === id);
-                };
-                return posRank(a.id) - posRank(b.id);
-            });
-            const speaker = members.find(p => p.id === curLine.speakerId) || members[safeIdx % Math.max(1, members.length)];
-            const line = curLine.text;
-            // Track each character's most recently used portraitId, scanning from the
-            // start of the dialogue up through the current line. This way, a character
-            // keeps showing the portrait they last spoke with even while someone else
-            // is talking, instead of reverting to their default portrait.
-            const lastPortraitByMember = {};
-            for (let li = 0; li <= safeIdx; li++) {
-                const ln = lines[li];
-                if (ln && ln.speakerId != null) {
-                    lastPortraitByMember[ln.speakerId] = ln.portraitId || "";
-                }
-            }
-            // The VN scene shows at most 2 characters on screen at once. Scanning
-            // backward from the current line, collect distinct speakers until we have
-            // 2 — this naturally drops the earliest speaker once a 3rd distinct person
-            // joins the conversation, while the most recent 2 stay visible.
-            const recentSpeakersOrdered = [];
-            for (let li = safeIdx; li >= 0; li--) {
-                const ln = lines[li];
-                if (ln && ln.speakerId != null && !recentSpeakersOrdered.includes(ln.speakerId)) {
-                    recentSpeakersOrdered.push(ln.speakerId);
-                    if (recentSpeakersOrdered.length >= 2) break;
-                }
-            }
-            const hasSpokenSet = new Set(recentSpeakersOrdered);
-            const endAction = () => {
-                if (scn && members.length >= 2) {
-                    const pairs = [];
-                    for (let i = 0; i < members.length; i++)
-                        for (let j = i + 1; j < members.length; j++)
-                            pairs.push([members[i].id, members[j].id]);
-                    setRels(prev => prev.map(r => { const ip = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a)); if (!ip)
-                        return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(100, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } }; }));
-                    showToast(`✅ 完成！親密度已更新`);
-                }
-                setActions(prev => prev.filter(a => a.id !== action.id));
-                setActiveScene(null);
-            };
-            return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, display: "flex", flexDirection: "column", background: "#000", overflow: "hidden" } },
-                React.createElement("div", { style: { position: "absolute", inset: 0, overflow: "hidden" } }, action.locationImg ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 } }) : React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(180deg,#1a2744,#0d1520)" } })),
-                React.createElement("div", { style: { position: "relative", zIndex: 2, padding: "10px 14px", paddingTop: "max(env(safe-area-inset-top,0px),10px)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(to bottom,rgba(0,0,0,0.7),transparent)" } },
-                    React.createElement("button", { onClick: () => setActiveScene(null), style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
-                    React.createElement("div", { style: { textAlign: "center" } },
-                        React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
-                        React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
-
-                            " ",
-                            action.scenario)),
-                    React.createElement("div", { style: { display: "flex", gap: 6 } },
-                        React.createElement("button", { onClick: () => { setActiveScene(null); setPage("actions"); setEditActionRequest(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u270F\uFE0F"),
-                        React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F"))),
-                React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", overflow: "hidden" } }, members.filter(p => hasSpokenSet.has(p.id)).map((p, i, visibleMembers) => {
-                    const isSpeaker = speaker?.id === p.id;
-                    const lastPortraitId = lastPortraitByMember[p.id];
-                    const overrideIll = lastPortraitId ? (p.illustrations || []).find(ill => ill.id === lastPortraitId) : null;
-                    const photo = overrideIll ? overrideIll.img : (isDark ? p.nightPortrait || p.portrait || p.img : p.portrait || p.img);
-                    const n = visibleMembers.length;
-                    const widthVw = 64;
-                    const widthPx = 310;
-                    // Female characters are layered in front by default (higher base z-index);
-                    // the active speaker still takes top priority regardless of gender.
-                    const baseZ = p.gender === "female" ? 1 : 0;
-                    const zIdx = isSpeaker ? 3 : baseZ + 1;
-                    const singlePos = n === 1 ? lastPositionByMember[p.id] : null; // "left" | "right" | undefined (defaults to centered)
-                    // Absolute positioning anchored directly to the viewport edges — no
-                    // flexbox math involved, so there's no risk of overflow from width
-                    // calculations being slightly off. With 2 characters, the first is
-                    // pinned to the left edge and the second to the right edge, letting
-                    // their wide portraits overlap naturally in the middle.
-                    let posStyle;
-                    if (n === 1) {
-                        if (singlePos === "left") posStyle = { left: 0 };
-                        else if (singlePos === "right") posStyle = { right: 0 };
-                        else posStyle = { left: "50%", transform: "translateX(-50%)" };
-                    } else {
-                        posStyle = i === 0 ? { left: 0 } : { right: 0 };
-                    }
-                    return (React.createElement("div", { key: p.id, style: { position: "absolute", bottom: 0, ...posStyle, display: "flex", flexDirection: "column", alignItems: "center", zIndex: zIdx, opacity: isSpeaker ? 1 : 0.65 } },
-                        React.createElement("div", { style: { width: `min(${widthVw}vw, ${widthPx}px)`, height: "min(90dvh, 640px)", overflow: "hidden", background: "transparent", display: "flex", alignItems: "flex-end", justifyContent: "center", transform: `scale(${isSpeaker ? 1 : 0.85})`, transformOrigin: "bottom center", transition: "transform 0.3s" } }, photo ? React.createElement("img", { src: photo, style: { maxWidth: "100%", height: "100%", width: "auto", objectFit: "contain", objectPosition: "bottom", display: "block", transform: lastFlippedByMember[p.id] ? "scaleX(-1)" : "none" } }) : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, color: "rgba(255,255,255,0.3)" } }, p.name[0]))));
-                })),
-                React.createElement("div", { onClick: nextDlg, style: { position: "relative", zIndex: 3, padding: "0 12px", paddingBottom: "max(calc(env(safe-area-inset-bottom,0px) + 16px),20px)", cursor: "pointer" } },
-                    React.createElement("div", { style: { background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "14px 16px" } },
-                        React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#E8A020", marginBottom: 6 } }, speaker?.name || ""),
-                        React.createElement("div", { style: { fontSize: 14, color: "#fff", lineHeight: 1.7, minHeight: 46 } }, line),
-                        React.createElement("div", { style: { textAlign: "right", marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)" } },
-                            "\u9EDE\u64CA\u7E7C\u7E8C \u25B6 (",
-                            lines.length > 0 ? safeIdx + 1 : 1,
-                            "/",
-                            Math.max(1, lines.length),
-                            ")")),
-                    scn && React.createElement("div", { style: { marginTop: 6, display: "flex", gap: 6, justifyContent: "center" } },
-                        React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
-                        React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                        React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
+            return React.createElement(VNSceneViewer, { action: action, people: people, scenarios: scenarios, setActions: setActions, setActiveScene: setActiveScene, setRels: setRels, setPage: setPage, setEditActionRequest: setEditActionRequest, isDark: isDark, showToast: showToast });
         })(),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 12px 8px" } },
             page === "relationship" && React.createElement(RelationshipPage, { people: people, rels: rels, th: th, isDark: isDark }),

@@ -241,7 +241,7 @@ function relColor(typeId, isDark) {
     return d.color;
 }
 let NID = 1, RID = 1;
-let HID = 1, LID = 1, AID = 1;
+let HID = 1, LID = 1, AID = 1, CID = 1;
 // ── UI primitives ─────────────────────────────────────────────────────────
 function Panel({ children, th, style = {} }) {
     return React.createElement("div", { style: { background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 6, overflow: "hidden", ...style } }, children);
@@ -487,7 +487,7 @@ function FamilyPage({ people, houses, setHouses, th, showToast, onOpenProfile })
 }
 
 // ── ActionsPage ───────────────────────────────────────────────────────────
-function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, setRels, setPage, setEditActionRequest, isDark, showToast }) {
+function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, setRels, setPage, setEditActionRequest, isDark, showToast, chapterPlaylist, setChapterPlaylist }) {
     const scn = scenarios.find(s => s.name === action.scenario);
     const hasCustom = action.customDialogue && action.customDialogue.length > 0 && action.customDialogue[0].text !== undefined;
     const genderSortedMembers = people.filter(p => action.memberIds.includes(p.id))
@@ -592,8 +592,11 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
         }
     }
     const hasSpokenSet = new Set(recentSpeakersOrdered);
+    const inPlaylist = chapterPlaylist && chapterPlaylist.actionIds.includes(action.id);
+    const playlistIdx = inPlaylist ? chapterPlaylist.actionIds.indexOf(action.id) : -1;
+    const isLastInPlaylist = !inPlaylist || playlistIdx >= chapterPlaylist.actionIds.length - 1;
     const endAction = () => {
-        if (scn && members.length >= 2) {
+        if (scn && members.length >= 2 && !action.intimacyApplied) {
             const pairs = [];
             for (let i = 0; i < members.length; i++)
                 for (let j = i + 1; j < members.length; j++)
@@ -602,21 +605,30 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
                 return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(100, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } }; }));
             showToast(`✅ 完成！親密度已更新`);
         }
-        setActions(prev => prev.filter(a => a.id !== action.id));
-        setActiveScene(null);
+        // The action record is always kept — "結束" only marks intimacy as applied
+        // (so replaying never double-counts it) and ends playback. Nothing is deleted.
+        setActions(prev => prev.map(a => a.id === action.id ? { ...a, intimacyApplied: true } : a));
+        if (inPlaylist && !isLastInPlaylist) {
+            const nextId = chapterPlaylist.actionIds[playlistIdx + 1];
+            setChapterPlaylist(prev => prev ? { ...prev, idx: playlistIdx + 1 } : prev);
+            setActiveScene(nextId);
+        } else {
+            if (inPlaylist) setChapterPlaylist(null);
+            setActiveScene(null);
+        }
     };
     return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, display: "flex", flexDirection: "column", background: "#000", overflow: "hidden" } },
         React.createElement("div", { style: { position: "absolute", inset: 0, overflow: "hidden" } }, action.locationImg ? React.createElement("img", { src: action.locationImg, style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 } }) : React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(180deg,#1a2744,#0d1520)" } })),
         React.createElement("div", { style: { position: "relative", zIndex: 2, padding: "10px 14px", paddingTop: "max(env(safe-area-inset-top,0px),10px)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(to bottom,rgba(0,0,0,0.7),transparent)" } },
-            React.createElement("button", { onClick: () => setActiveScene(null), style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
+            React.createElement("button", { onClick: () => { if (inPlaylist) setChapterPlaylist(null); setActiveScene(null); }, style: { padding: "6px 14px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u2190 \u8FD4\u56DE"),
             React.createElement("div", { style: { textAlign: "center" } },
                 React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" } }, action.locationName),
                 React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.6)" } },
                     " ",
-                    action.scenario)),
+                    action.name || action.scenario)),
             React.createElement("div", { style: { display: "flex", gap: 6 } },
                 React.createElement("button", { onClick: () => { setActiveScene(null); setPage("actions"); setEditActionRequest(action); }, style: { padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "\u270F\uFE0F"),
-                React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "\u7D50\u675F"))),
+                React.createElement("button", { onClick: endAction, style: { padding: "6px 14px", borderRadius: 5, border: "none", background: "#E8A020", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, inPlaylist && !isLastInPlaylist ? "下一個 ▶" : "結束"))),
         React.createElement("div", { style: { position: "relative", zIndex: 2, flex: 1, width: "100%", overflow: "hidden" } }, members.filter(p => hasSpokenSet.has(p.id)).map((p, i, visibleMembers) => {
             const isSpeaker = speaker?.id === p.id;
             const lastPortraitId = lastPortraitByMember[p.id];
@@ -670,15 +682,17 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
                 React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
 }
 
-function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, th, isDark, showToast, setActiveScene, editRequest, onEditConsumed }) {
+function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, chapters, setChapters, th, isDark, showToast, setActiveScene, chapterPlaylist, setChapterPlaylist, editRequest, onEditConsumed }) {
     const [scenarios, setScenarios] = useState(SCENARIOS);
     const [showWizard, setShowWizard] = useState(false);
-    const [wizStep, setWizStep] = useState("location");
-    const [draft, setDraft] = useState({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
+    const [wizStep, setWizStep] = useState("chapter");
+    const [draft, setDraft] = useState({ chapterId: null, locationId: null, scenario: null, memberIds: [], customDialogue: [], name: "" });
     const [dlgLines, setDlgLines] = useState([]);
     const [editingActionId, setEditingActionId] = useState(null); // null = creating new action; set = editing existing one
     const [showAddLoc, setShowAddLoc] = useState(false);
     const [locForm, setLocForm] = useState({ name: "", img: null });
+    const [showAddChapter, setShowAddChapter] = useState(false);
+    const [chapterForm, setChapterForm] = useState("");
     const [showScenMgr, setShowScenMgr] = useState(false);
     const [newScen, setNewScen] = useState({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 });
     const [editScenIdx, setEditScenIdx] = useState(null);
@@ -689,19 +703,27 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
         setLocForm({ name: "", img: null });
         setShowAddLoc(false);
     };
+    const addChapter = () => {
+        if (!chapterForm.trim()) return null;
+        const newId = CID++;
+        setChapters(prev => [...prev, { id: newId, name: chapterForm.trim() }]);
+        setChapterForm("");
+        setShowAddChapter(false);
+        return newId;
+    };
     const startWizard = () => {
         setEditingActionId(null);
-        setDraft({ locationId: null, scenario: null, memberIds: [], customDialogue: [] });
+        setDraft({ chapterId: null, locationId: null, scenario: null, memberIds: [], customDialogue: [], name: "" });
         setDlgLines([]);
-        setWizStep("location");
+        setWizStep("chapter");
         setShowWizard(true);
     };
     const startEditWizard = (action) => {
         const scn = scenarios.find(s => s.name === action.scenario) || { name: action.scenario, emoji: action.scenarioEmoji, love: 0, friendship: 0, family: 0 };
         setEditingActionId(action.id);
-        setDraft({ locationId: action.locationId, scenario: scn, memberIds: [...action.memberIds], customDialogue: action.customDialogue || [] });
+        setDraft({ chapterId: action.chapterId ?? null, locationId: action.locationId, scenario: scn, memberIds: [...action.memberIds], customDialogue: action.customDialogue || [], name: action.name || "" });
         setDlgLines((action.customDialogue || []).map(l => ({ ...l })));
-        setWizStep("location");
+        setWizStep("chapter");
         setShowWizard(true);
     };
     // Allow other parts of the app (e.g. the VN scene viewer's Edit button) to
@@ -713,18 +735,19 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
         }
     }, [editRequest]);
     const confirmAction = () => {
-        if (!draft.locationId || !draft.scenario || draft.memberIds.length < 2) return;
+        if (!draft.chapterId || !draft.locationId || !draft.scenario || draft.memberIds.length < 2) return;
         const loc = locations.find(l => l.id === draft.locationId);
+        const customName = draft.name.trim();
         if (editingActionId) {
             setActions(prev => prev.map(a => a.id !== editingActionId ? a : {
-                ...a, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null,
-                scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds,
+                ...a, chapterId: draft.chapterId, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null,
+                scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, name: customName,
                 customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0
             }));
             showToast("✅ 行動已更新");
         } else {
-            setActions(prev => [...prev, { id: AID++, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0, ts: Date.now(), isSpecial: false }]);
-            showToast(`${draft.scenario.emoji} ${draft.scenario.name} 開始！`);
+            setActions(prev => [...prev, { id: AID++, chapterId: draft.chapterId, locationId: draft.locationId, locationName: loc?.name || "", locationImg: loc?.img || null, scenario: draft.scenario.name, scenarioEmoji: draft.scenario.emoji, memberIds: draft.memberIds, name: customName, customDialogue: dlgLines.filter(l => l.text.trim()), _dlgIdx: 0, ts: Date.now(), isSpecial: false }]);
+            showToast(`${draft.scenario.emoji} ${customName || draft.scenario.name} 開始！`);
         }
         setShowWizard(false);
         setEditingActionId(null);
@@ -793,9 +816,8 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                             React.createElement("label", { style: { fontSize: 9, color: f.color, fontWeight: 700 } }, f.label),
                             React.createElement("input", { type: "number", value: newScen[f.k], onChange: e => setNewScen(s => ({ ...s, [f.k]: parseInt(e.target.value) || 0 })), style: { ...iStyle, padding: "5px 8px", fontSize: 12 } })))),
                     React.createElement("button", { onClick: () => { if (!newScen.name.trim()) return; setScenarios(prev => [...prev, { ...newScen }]); setNewScen({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 }); }, style: { padding: "7px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Add")))),
-        actions.length > 0 && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
-            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", padding: "4px 2px" } }, "行動記錄"),
-            actions.map(action => {
+        actions.length > 0 && (() => {
+            const renderActionCard = (action) => {
                 const members = people.filter(p => action.memberIds.includes(p.id));
                 const scn = SCENARIOS.find(s => s.name === action.scenario);
                 return React.createElement("div", { key: action.id, onClick: () => setActiveScene(action.id), style: { borderRadius: 8, overflow: "hidden", background: th.card, border: `1px solid ${th.cardBorder}`, position: "relative", cursor: "pointer" } },
@@ -811,7 +833,7 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                             members.length > 3 && React.createElement("div", { style: { width: 44, height: 62, borderRadius: 4, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 } }, "+", members.length - 3)),
                         React.createElement("div", { style: { flex: 1 } },
                             React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 } }, action.locationName),
-                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 6 } }, action.scenarioEmoji, " ", action.scenario),
+                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 6 } }, action.scenarioEmoji, " ", action.name || action.scenario),
                             scn && React.createElement("div", { style: { display: "flex", gap: 4 } },
                                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
@@ -819,15 +841,44 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" } },
                             React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕"),
                             React.createElement("button", { onClick: e => { e.stopPropagation(); toggleSpecial(action.id); }, style: { padding: "5px 10px", borderRadius: 4, border: `1px solid ${action.isSpecial ? "#FBBF24" : "rgba(255,255,255,0.3)"}`, background: action.isSpecial ? "rgba(251,191,36,0.25)" : "rgba(0,0,0,0.3)", color: action.isSpecial ? "#FBBF24" : "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" } }, action.isSpecial ? "★ 已加入特殊記憶" : "☆ 加入特殊記憶"))));
-            })),
+            };
+            const ungrouped = actions.filter(a => !a.chapterId);
+            return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } },
+                chapters.map(ch => {
+                    const chActions = actions.filter(a => a.chapterId === ch.id);
+                    if (chActions.length === 0) return null;
+                    return React.createElement("div", { key: ch.id, style: { display: "flex", flexDirection: "column", gap: 8 } },
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 2px" } },
+                            React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase" } }, "📖 ", ch.name, " (", chActions.length, ")"),
+                            React.createElement("button", { onClick: () => { const ids = chActions.map(a => a.id); setChapterPlaylist({ chapterId: ch.id, actionIds: ids, idx: 0 }); setActiveScene(ids[0]); }, style: { display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "▶ 連續播放本章")),
+                        chActions.map(renderActionCard));
+                }),
+                ungrouped.length > 0 && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+                    chapters.length > 0 && React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: th.textMuted, letterSpacing: 1.5, textTransform: "uppercase", padding: "4px 2px" } }, "未分類行動"),
+                    ungrouped.map(renderActionCard)));
+        })(),
         React.createElement("button", { onClick: startWizard, disabled: locations.length === 0, style: { width: "100%", padding: "12px", borderRadius: 8, border: "none", background: locations.length === 0 ? th.panel : th.accent, color: locations.length === 0 ? th.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: locations.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" } }, locations.length === 0 ? "先新增地點才能開始行動" : "＋ 開始行動"),
         showWizard && React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", paddingBottom: "max(env(safe-area-inset-bottom,0px),16px)" } },
             React.createElement("div", { style: { width: "100%", maxWidth: 480, background: th.card, border: `1px solid ${th.cardBorder}`, borderRadius: 12, maxHeight: "85dvh", display: "flex", flexDirection: "column", overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "10px 14px 0", fontSize: 11, fontWeight: 700, color: th.textMuted, letterSpacing: 1, textTransform: "uppercase" } }, editingActionId ? "✏️ 編輯行動" : "✨ 新增行動"),
                 React.createElement("div", { style: { display: "flex", background: th.panel, borderBottom: `1px solid ${th.divider}`, flexShrink: 0 } },
-                    [{ k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }, { k: "dialogue", l: "對話" }].map((s, i) => React.createElement("button", { key: s.k, onClick: () => { if (i === 1 && !draft.locationId) return; if (i === 2 && !draft.scenario) return; if (i === 3 && draft.memberIds.length < 2) return; setWizStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", background: "transparent", color: wizStep === s.k ? th.accent : th.textMuted, borderBottom: wizStep === s.k ? `2px solid ${th.accent}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" } }, i + 1, ". ", s.l)),
+                    [{ k: "chapter", l: "章節" }, { k: "location", l: "地點" }, { k: "scenario", l: "情境" }, { k: "members", l: "角色" }, { k: "dialogue", l: "對話" }].map((s, i) => React.createElement("button", { key: s.k, onClick: () => { if (i === 1 && !draft.chapterId) return; if (i === 2 && !draft.locationId) return; if (i === 3 && !draft.scenario) return; if (i === 4 && draft.memberIds.length < 2) return; setWizStep(s.k); }, style: { flex: 1, padding: "12px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", background: "transparent", color: wizStep === s.k ? th.accent : th.textMuted, borderBottom: wizStep === s.k ? `2px solid ${th.accent}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" } }, i + 1, ". ", s.l)),
                     React.createElement("button", { onClick: () => setShowWizard(false), style: { padding: "12px 16px", border: "none", background: "transparent", color: th.textMuted, fontSize: 18, cursor: "pointer" } }, "✕")),
                 React.createElement("div", { style: { overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "14px", flex: 1 } },
+                    wizStep === "chapter" && React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 10, color: th.textMuted, marginBottom: 10 } }, "選擇這個行動屬於哪一章"),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 } },
+                            chapters.map(ch => {
+                                const sel = draft.chapterId === ch.id;
+                                return React.createElement("button", { key: ch.id, onClick: () => { setDraft(d => ({ ...d, chapterId: ch.id })); setWizStep("location"); }, style: { textAlign: "left", padding: "11px 14px", borderRadius: 6, border: `1.5px solid ${sel ? th.accent : th.cardBorder}`, background: sel ? th.accentDim : th.panel, color: sel ? th.accent : th.text, fontSize: 13, fontWeight: sel ? 700 : 500, cursor: "pointer", fontFamily: "inherit" } }, "📖 ", ch.name);
+                            }),
+                            chapters.length === 0 && !showAddChapter && React.createElement("div", { style: { fontSize: 11, color: th.textMuted, fontStyle: "italic", padding: "8px 2px" } }, "尚無章節，新建一個開始故事")),
+                        showAddChapter ? React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+                            React.createElement("input", { value: chapterForm, onChange: e => setChapterForm(e.target.value), onKeyDown: e => { if (e.key === "Enter") { const id = addChapter(); if (id) { setDraft(d => ({ ...d, chapterId: id })); setWizStep("location"); } } }, placeholder: "章節名稱，例如：第一章 相遇", style: iStyle, autoFocus: true }),
+                            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                                React.createElement("button", { onClick: () => { const id = addChapter(); if (id) { setDraft(d => ({ ...d, chapterId: id })); setWizStep("location"); } }, disabled: !chapterForm.trim(), style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: chapterForm.trim() ? 1 : 0.5 } }, "新增並選用"),
+                                React.createElement("button", { onClick: () => setShowAddChapter(false), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "取消"))) :
+                            React.createElement("button", { onClick: () => setShowAddChapter(true), style: { width: "100%", padding: "10px", borderRadius: 6, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "+ 新建章節")),
                     wizStep === "location" && React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10 } },
                         locations.map(loc => {
                             const sel = draft.locationId === loc.id;
@@ -922,6 +973,9 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                         React.createElement("button", { onClick: () => setDlgLines(prev => prev.filter((_, i) => i !== li)), style: { width: 24, height: 24, borderRadius: "50%", border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 12, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, "✕")));
                             })),
                         React.createElement("button", { onClick: () => setDlgLines(prev => [...prev, { text: "", speakerId: draft.memberIds[0] || null, portraitId: "" }]), style: { width: "100%", padding: "8px", borderRadius: 4, border: `1px dashed ${th.divider}`, background: "transparent", color: th.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 } }, "+ 加一句台詞"),
+                        React.createElement("div", { style: { marginBottom: 12 } },
+                            React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 } }, "行動名稱（選填）"),
+                            React.createElement("input", { value: draft.name, onChange: e => setDraft(d => ({ ...d, name: e.target.value })), placeholder: `預設使用情境名稱：${draft.scenario?.name || ""}`, style: iStyle })),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
                             React.createElement("button", { onClick: () => setWizStep("members"), style: { padding: "9px 14px", borderRadius: 4, border: `1px solid ${th.divider}`, background: "transparent", color: th.textSub, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "← Back"),
                             React.createElement("button", { onClick: confirmAction, style: { flex: 1, padding: "9px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, editingActionId ? "儲存修改" : "開始行動！")))))));
@@ -959,8 +1013,10 @@ function App() {
     const [houses, setHouses] = useState([]);
     const [actions, setActions] = useState([]);
     const [locations, setLocations] = useState([]);
+    const [chapters, setChapters] = useState([]); // [{id, name}] — groups actions into a story chapter
     const [scenarios, setScenarios] = useState(SCENARIOS);
     const [activeScene, setActiveScene] = useState(null); // action id for fullscreen VN view
+    const [chapterPlaylist, setChapterPlaylist] = useState(null); // { chapterId, actionIds: [...], idx } while auto-playing through a chapter
     const [editActionRequest, setEditActionRequest] = useState(null); // action object to edit, consumed by ActionsPage
     const [profileId, setProfileId] = useState(null); // full-screen profile
     const [appReady, setAppReady] = useState(false);
@@ -971,7 +1027,7 @@ function App() {
     const hadDataOnce = useRef(false); // tracks whether we've ever seen non-empty state, for the empty-save safety guard
     // Always keep a ref to latest state so saves never use stale closures
     const latestState = useRef({ people, rels, events, messages, houses, actions, locations });
-    useEffect(() => { latestState.current = { people, rels, events, messages, houses, actions, locations }; }, [people, rels, events, messages, houses, actions, locations]);
+    useEffect(() => { latestState.current = { people, rels, events, messages, houses, actions, locations, chapters }; }, [people, rels, events, messages, houses, actions, locations, chapters]);
     const SPLASH = "data:image/jpeg;base64,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";
     const loadCloud = async () => {
         const cloud = await sbLoad();
@@ -985,6 +1041,7 @@ function App() {
         setHouses(cloud.houses || []);
         setActions(cloud.actions || []);
         setLocations(cloud.locations || []);
+        setChapters(cloud.chapters || []);
         if ((cloud.people || []).length || (cloud.houses || []).length || (cloud.actions || []).length || (cloud.locations || []).length) {
             hadDataOnce.current = true;
         }
@@ -1023,6 +1080,11 @@ function App() {
             const ml = Math.max(...cloud.locations.map(l => l.id ?? 0), 0);
             if (ml >= LID)
                 LID = ml + 1;
+        }
+        if ((cloud.chapters || []).length) {
+            const mc = Math.max(...cloud.chapters.map(c => c.id ?? 0), 0);
+            if (mc >= CID)
+                CID = mc + 1;
         }
         return true;
     };
@@ -1102,6 +1164,7 @@ function App() {
                 setHouses(parsed.houses || []);
                 setActions(parsed.actions || []);
                 setLocations(parsed.locations || []);
+                setChapters(parsed.chapters || []);
                 hadDataOnce.current = true;
                 loaded.current = true; // allow this restored data to be saved back to cloud
                 showToast("✅ 已從檔案匯入資料");
@@ -1125,6 +1188,7 @@ function App() {
             setHouses(s.houses || []);
             setActions(s.actions || []);
             setLocations(s.locations || []);
+            setChapters(s.chapters || []);
             hadDataOnce.current = true;
             loaded.current = true;
             showToast(`✅ 已還原本地備份（${new Date(parsed.savedAt).toLocaleString()}）`);
@@ -1200,13 +1264,13 @@ function App() {
                 setActiveScene(null);
                 return null;
             }
-            return React.createElement(VNSceneViewer, { action: action, people: people, scenarios: scenarios, setActions: setActions, setActiveScene: setActiveScene, setRels: setRels, setPage: setPage, setEditActionRequest: setEditActionRequest, isDark: isDark, showToast: showToast });
+            return React.createElement(VNSceneViewer, { action: action, people: people, scenarios: scenarios, setActions: setActions, setActiveScene: setActiveScene, setRels: setRels, setPage: setPage, setEditActionRequest: setEditActionRequest, isDark: isDark, showToast: showToast, chapterPlaylist: chapterPlaylist, setChapterPlaylist: setChapterPlaylist });
         })(),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 12px 8px" } },
             page === "relationship" && React.createElement(RelationshipPage, { people: people, rels: rels, th: th, isDark: isDark }),
             page === "residents" && React.createElement(ResidentsPage, { people: people, setPeople: setPeople, rels: rels, setRels: setRels, th: th, isDark: isDark, showToast: showToast, onOpenProfile: setProfileId }),
             page === "family" && React.createElement(FamilyPage, { people: people, houses: houses, setHouses: setHouses, th: th, showToast: showToast, onOpenProfile: setProfileId }),
-            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, scenarios: scenarios, setScenarios: setScenarios, setActiveScene: setActiveScene, th: th, isDark: isDark, showToast: showToast, editRequest: editActionRequest, onEditConsumed: () => setEditActionRequest(null) }),
+            page === "actions" && React.createElement(ActionsPage, { people: people, rels: rels, setRels: setRels, actions: actions, setActions: setActions, locations: locations, setLocations: setLocations, chapters: chapters, setChapters: setChapters, scenarios: scenarios, setScenarios: setScenarios, setActiveScene: setActiveScene, chapterPlaylist: chapterPlaylist, setChapterPlaylist: setChapterPlaylist, th: th, isDark: isDark, showToast: showToast, editRequest: editActionRequest, onEditConsumed: () => setEditActionRequest(null) }),
             React.createElement("div", { style: { height: 8 } })),
         React.createElement("div", { style: { flexShrink: 0, background: th.panel, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${th.divider}`, paddingBottom: "max(env(safe-area-inset-bottom,0px),4px)", display: "flex", zIndex: 50, minHeight: 56 } }, NAV.map(n => {
             const active = page === n.key;

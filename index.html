@@ -139,6 +139,7 @@ async function sbSave(state) {
     }
 }
 const BG_DAY = "var(--bg-day)";
+const INTIMACY_MAX = 2500; // intimacy stats (love/friendship/family) are stored on a 0-2500 scale; bars display this as a percentage
 const BG_NIGHT = "var(--bg-night)";
 const SB_BUCKET = "tstoc-images";
 // Upload a dataURL (from compressImg) to Supabase Storage and return its public URL.
@@ -391,26 +392,26 @@ function ResidentsPage({ people, setPeople, rels, setRels, th, isDark, showToast
 // ROOT APP
 // ═══════════════════════════════════════════════════════════════════════════
 const SCENARIOS = [
-  {name:"約會", emoji:"💕", love:15, friendship:5, family:0},
-  {name:"喝咖啡", emoji:"☕", love:0, friendship:10, family:5},
-  {name:"開會", emoji:"💼", love:-5, friendship:5, family:10},
-  {name:"散步", emoji:"🚶", love:5, friendship:10, family:5},
-  {name:"出遊", emoji:"✈️", love:10, friendship:15, family:10},
-  {name:"買菜", emoji:"🥦", love:0, friendship:5, family:15},
-  {name:"做菜", emoji:"👨\u200D🍳", love:0, friendship:10, family:15},
-  {name:"購物", emoji:"🛍️", love:5, friendship:10, family:0},
-  {name:"聚會", emoji:"🎉", love:0, friendship:15, family:5},
-  {name:"工作", emoji:"💻", love:0, friendship:5, family:5},
-  {name:"學習", emoji:"📝", love:0, friendship:10, family:0},
-  {name:"慶生", emoji:"🎂", love:10, friendship:15, family:15},
-  {name:"運動", emoji:"⚽", love:0, friendship:10, family:5},
-  {name:"看電影", emoji:"🎬", love:10, friendship:5, family:0},
-  {name:"談判", emoji:"🤝", love:-5, friendship:-10, family:-5},
-  {name:"密謀", emoji:"🤫", love:5, friendship:0, family:10},
-  {name:"吃飯", emoji:"🍽️", love:5, friendship:10, family:10},
-  {name:"喝酒", emoji:"🍺", love:5, friendship:15, family:-5},
-  {name:"打架", emoji:"👊", love:-10, friendship:-15, family:-10},
-  {name:"跟蹤", emoji:"👣", love:10, friendship:-5, family:-5},
+  {name:"約會", emoji:"💕", love:15, friendship:5, family:0, fear:0},
+  {name:"喝咖啡", emoji:"☕", love:0, friendship:10, family:5, fear:0},
+  {name:"開會", emoji:"💼", love:-5, friendship:5, family:10, fear:0},
+  {name:"散步", emoji:"🚶", love:5, friendship:10, family:5, fear:0},
+  {name:"出遊", emoji:"✈️", love:10, friendship:15, family:10, fear:0},
+  {name:"買菜", emoji:"🥦", love:0, friendship:5, family:15, fear:0},
+  {name:"做菜", emoji:"👨\u200D🍳", love:0, friendship:10, family:15, fear:0},
+  {name:"購物", emoji:"🛍️", love:5, friendship:10, family:0, fear:0},
+  {name:"聚會", emoji:"🎉", love:0, friendship:15, family:5, fear:0},
+  {name:"工作", emoji:"💻", love:0, friendship:5, family:5, fear:0},
+  {name:"學習", emoji:"📝", love:0, friendship:10, family:0, fear:0},
+  {name:"慶生", emoji:"🎂", love:10, friendship:15, family:15, fear:0},
+  {name:"運動", emoji:"⚽", love:0, friendship:10, family:5, fear:0},
+  {name:"看電影", emoji:"🎬", love:10, friendship:5, family:0, fear:0},
+  {name:"談判", emoji:"🤝", love:-5, friendship:-10, family:-5, fear:5},
+  {name:"密謀", emoji:"🤫", love:5, friendship:0, family:10, fear:5},
+  {name:"吃飯", emoji:"🍽️", love:5, friendship:10, family:10, fear:0},
+  {name:"喝酒", emoji:"🍺", love:5, friendship:15, family:-5, fear:0},
+  {name:"打架", emoji:"👊", love:-10, friendship:-15, family:-10, fear:15},
+  {name:"跟蹤", emoji:"👣", love:10, friendship:-5, family:-5, fear:10},
 ];
 // ── PortraitThumb ─────────────────────────────────────────────────────────
 function PortraitThumb({ p, size = 56, th, isOwner = false, onClick, dimmed = false, showRemove = false }) {
@@ -602,7 +603,7 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
                 for (let j = i + 1; j < members.length; j++)
                     pairs.push([members[i].id, members[j].id]);
             setRels(prev => prev.map(r => { const ip = pairs.some(([a, b]) => (r.a === a && r.b === b) || (r.a === b && r.b === a)); if (!ip)
-                return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(100, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family) } }; }));
+                return r; const cur = r.intimacy || {}; const cl = v => Math.max(0, Math.min(INTIMACY_MAX, v)); return { ...r, intimacy: { love: cl((cur.love ?? 0) + scn.love), friendship: cl((cur.friendship ?? 0) + scn.friendship), family: cl((cur.family ?? 0) + scn.family), fear: cl((cur.fear ?? 0) + (scn.fear ?? 0)) } }; }));
             showToast(`✅ 完成！親密度已更新`);
         }
         // The action record is always kept — "結束" only marks intimacy as applied
@@ -679,7 +680,8 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
             scn && React.createElement("div", { style: { marginTop: 6, display: "flex", gap: 6, justifyContent: "center" } },
                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })))));
+                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }),
+                React.createElement(EffectBadge, { val: scn.fear, color: "#A78BFA" })))));
 }
 
 function ActionsPage({ people, rels, setRels, actions, setActions, locations, setLocations, chapters, setChapters, th, isDark, showToast, setActiveScene, chapterPlaylist, setChapterPlaylist, editRequest, onEditConsumed }) {
@@ -694,7 +696,7 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
     const [showAddChapter, setShowAddChapter] = useState(false);
     const [chapterForm, setChapterForm] = useState("");
     const [showScenMgr, setShowScenMgr] = useState(false);
-    const [newScen, setNewScen] = useState({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 });
+    const [newScen, setNewScen] = useState({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0, fear: 0 });
     const [editScenIdx, setEditScenIdx] = useState(null);
     const iStyle = { padding: "9px 12px", borderRadius: 4, background: th.panel, border: `1px solid ${th.divider}`, color: th.text, fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
     const addLocation = () => {
@@ -804,18 +806,19 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                         React.createElement("div", { style: { display: "flex", gap: 4, marginTop: 2 } },
                             React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                             React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                            React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
+                            React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }),
+                            React.createElement(EffectBadge, { val: scn.fear, color: "#A78BFA" }))),
                     React.createElement("button", { onClick: () => setScenarios(prev => prev.filter((_, i) => i !== idx)), style: { padding: "3px 8px", borderRadius: 4, border: `1px solid ${th.red}44`, background: "transparent", color: th.red, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕"))),
                 React.createElement("div", { style: { padding: "10px", background: th.accentDim, border: `1px solid ${th.accent}33`, borderRadius: 5, display: "flex", flexDirection: "column", gap: 6 } },
                     React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1, textTransform: "uppercase" } }, "Add Scenario"),
                     React.createElement("div", { style: { display: "flex", gap: 6 } },
                         React.createElement("input", { value: newScen.emoji, onChange: e => setNewScen(s => ({ ...s, emoji: e.target.value })), style: { ...iStyle, width: 44, textAlign: "center", fontSize: 16 } }),
                         React.createElement("input", { value: newScen.name, onChange: e => setNewScen(s => ({ ...s, name: e.target.value })), placeholder: "Scenario name", style: { ...iStyle, flex: 1 } })),
-                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 } },
-                        [{ k: "love", label: "愛情", color: "#F472B6" }, { k: "friendship", label: "友誼", color: "#FBBF24" }, { k: "family", label: "家庭", color: "#60A5FA" }].map(f => React.createElement("div", { key: f.k },
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 } },
+                        [{ k: "love", label: "愛情", color: "#F472B6" }, { k: "friendship", label: "友誼", color: "#FBBF24" }, { k: "family", label: "家庭", color: "#60A5FA" }, { k: "fear", label: "畏懼", color: "#A78BFA" }].map(f => React.createElement("div", { key: f.k },
                             React.createElement("label", { style: { fontSize: 9, color: f.color, fontWeight: 700 } }, f.label),
                             React.createElement("input", { type: "number", value: newScen[f.k], onChange: e => setNewScen(s => ({ ...s, [f.k]: parseInt(e.target.value) || 0 })), style: { ...iStyle, padding: "5px 8px", fontSize: 12 } })))),
-                    React.createElement("button", { onClick: () => { if (!newScen.name.trim()) return; setScenarios(prev => [...prev, { ...newScen }]); setNewScen({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0 }); }, style: { padding: "7px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Add")))),
+                    React.createElement("button", { onClick: () => { if (!newScen.name.trim()) return; setScenarios(prev => [...prev, { ...newScen }]); setNewScen({ name: "", emoji: "⭐", love: 0, friendship: 0, family: 0, fear: 0 }); }, style: { padding: "7px", borderRadius: 4, border: "none", background: th.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Add")))),
         actions.length > 0 && (() => {
             const renderActionCard = (action) => {
                 const members = people.filter(p => action.memberIds.includes(p.id));
@@ -837,7 +840,8 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                             scn && React.createElement("div", { style: { display: "flex", gap: 4 } },
                                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }))),
+                                React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }),
+                                React.createElement(EffectBadge, { val: scn.fear, color: "#A78BFA" }))),
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" } },
                             React.createElement("button", { onClick: e => { e.stopPropagation(); removeAction(action.id); }, style: { padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.3)", color: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit" } }, "✕"),
                             React.createElement("button", { onClick: e => { e.stopPropagation(); toggleSpecial(action.id); }, style: { padding: "5px 10px", borderRadius: 4, border: `1px solid ${action.isSpecial ? "#FBBF24" : "rgba(255,255,255,0.3)"}`, background: action.isSpecial ? "rgba(251,191,36,0.25)" : "rgba(0,0,0,0.3)", color: action.isSpecial ? "#FBBF24" : "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" } }, action.isSpecial ? "★ 已加入特殊記憶" : "☆ 加入特殊記憶"))));
@@ -899,7 +903,8 @@ function ActionsPage({ people, rels, setRels, actions, setActions, locations, se
                                     React.createElement("div", { style: { display: "flex", gap: 3 } },
                                         React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                                         React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),
-                                        React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" })));
+                                        React.createElement(EffectBadge, { val: scn.family, color: "#60A5FA" }),
+                                        React.createElement(EffectBadge, { val: scn.fear, color: "#A78BFA" })));
                             }))),
                     wizStep === "members" && React.createElement("div", null,
                         React.createElement("div", { style: { padding: "8px 10px", background: th.panel, borderRadius: 6, marginBottom: 10, display: "flex", gap: 10, alignItems: "center" } },
@@ -1454,13 +1459,14 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                         }))))),
             tab === "interact" && (() => {
                 const bars = [
-                    { key: "love", label: "心動值", cat: "愛情", color: "#F472B6", max: 100 },
-                    { key: "friendship", label: "熟絡值", cat: "友誼", color: "#FBBF24", max: 100 },
-                    { key: "family", label: "信任值", cat: "家庭", color: "#60A5FA", max: 100 },
+                    { key: "love", label: "心動值", cat: "愛情", color: "#F472B6", max: INTIMACY_MAX },
+                    { key: "friendship", label: "熟絡值", cat: "友誼", color: "#FBBF24", max: INTIMACY_MAX },
+                    { key: "family", label: "信任值", cat: "家庭", color: "#60A5FA", max: INTIMACY_MAX },
+                    { key: "fear", label: "畏懼值", cat: "畏懼", color: "#A78BFA", max: INTIMACY_MAX },
                 ];
                 const getIntimacy = (rel) => rel.intimacy || {};
                 const setIntimacyVal = (relId, key, val) => {
-                    setRels(prev => prev.map(r => r.id !== relId ? r : { ...r, intimacy: { ...r.intimacy, [key]: Math.max(0, Math.min(100, val)) } }));
+                    setRels(prev => prev.map(r => r.id !== relId ? r : { ...r, intimacy: { ...r.intimacy, [key]: Math.max(0, Math.min(INTIMACY_MAX, val)) } }));
                 };
                 if (known.length === 0)
                     return (React.createElement("div", { style: { padding: "32px", textAlign: "center", color: th.textMuted, fontSize: 13 } },
@@ -1480,11 +1486,12 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                             React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: th.text, marginBottom: 2 } }, other.name),
                             bars.map(bar => {
                                 const val = intimacy[bar.key] ?? 0;
+                                const pct = Math.max(0, Math.min(100, (val / bar.max) * 100));
                                 return (React.createElement("div", { key: bar.key, style: { display: "flex", alignItems: "center", gap: 6 } },
                                     React.createElement("span", { style: { fontSize: 10, color: bar.color, fontWeight: 700, width: 28, flexShrink: 0 } }, bar.cat),
                                     React.createElement("div", { style: { flex: 1, height: 10, background: th.divider, borderRadius: 5, overflow: "hidden" } },
-                                        React.createElement("div", { style: { height: "100%", width: `${val}%`, background: bar.color, borderRadius: 5, transition: "width 0.5s" } })),
-                                    React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: bar.color, width: 24, textAlign: "right", flexShrink: 0 } }, val)));
+                                        React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: bar.color, borderRadius: 5, transition: "width 0.5s" } })),
+                                    React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: bar.color, width: 32, textAlign: "right", flexShrink: 0 } }, Math.round(pct), "%")));
                             }))));
                 })));
             })(),

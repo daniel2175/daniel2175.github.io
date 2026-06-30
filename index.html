@@ -1320,7 +1320,7 @@ function IllustrationLibrary({ person, illus, editing, th, onUpdate }) {
         editing && React.createElement("div", { style: { background: th.accentDim, border: `1px solid ${th.accent}33`, borderRadius: 6, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 } },
             React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: th.accent, letterSpacing: 1.5, textTransform: "uppercase" } }, "新增立繪"),
             React.createElement("label", { htmlFor: "ill-upload", style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 5, border: `1.5px dashed ${th.accent}66`, cursor: "pointer", color: th.accent, fontSize: 12, fontWeight: 600 } }, "🖼 上傳立繪圖"),
-            React.createElement("input", { id: "ill-upload", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => { if (!e.target.files[0]) return; compressImg(e.target.files[0], 400, 700, 0.85).then(src => uploadToStorage(src, "illus")).then(img => { const id = "ill_" + Date.now(); const newIllus = [...illus, { id, img, label: "", folder: activeFolder !== "__all__" ? activeFolder : "" }]; onUpdate(person.id, { illustrations: newIllus }); }); } }))),
+            React.createElement("input", { id: "ill-upload", type: "file", accept: "image/*", style: { display: "none" }, onChange: e => { if (!e.target.files[0]) return; compressImg(e.target.files[0], 400, 700, 0.85).then(src => uploadToStorage(src, "illus")).then(img => { const id = "ill_" + Date.now(); const newIllus = [...illus, { id, img, label: "", folder: activeFolder !== "__all__" ? activeFolder : "" }]; onUpdate(person.id, { illustrations: newIllus }); }); } })),
         illus.length === 0
             ? React.createElement("div", { style: { textAlign: "center", padding: "32px", color: th.textMuted, fontSize: 12 } }, "尚未上傳立繪", React.createElement("br", null), React.createElement("span", { style: { fontSize: 10 } }, "在 Edit 模式下上傳"))
             : React.createElement(React.Fragment, null,
@@ -1337,7 +1337,7 @@ function IllustrationLibrary({ person, illus, editing, th, onUpdate }) {
                                 React.createElement("input", { value: ill.folder || "", onChange: e => updateIll(ill.id, { folder: e.target.value }), placeholder: "📁 資料夾...", style: { position: "absolute", bottom: 0, left: 0, right: 0, padding: "3px 6px", background: "rgba(20,20,80,0.8)", color: "#aac", border: "none", fontSize: 9, outline: "none", fontFamily: "inherit" } }),
                                 React.createElement("button", { onClick: () => deleteIll(ill.id), style: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(180,30,30,0.8)", border: "none", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 } }, "✕"))
                             : React.createElement(React.Fragment, null,
-                                ill.label && React.createElement("div", { style: { position: "absolute", bottom: 0, left: 0, right: 0, padding: "3px 6px", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 9, textAlign: "center" } }, ill.label))))));
+                                ill.label && React.createElement("div", { style: { position: "absolute", bottom: 0, left: 0, right: 0, padding: "3px 6px", background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 9, textAlign: "center" } }, ill.label)))))));
 }
 
 

@@ -1308,7 +1308,7 @@ function App() {
                 setProfileId(null);
                 return null;
             }
-            return React.createElement(ResidentProfile, { person: person, people: people, rels: rels, setRels: setRels, events: events, setEvents: setEvents, messages: messages, setMessages: setMessages, th: th, isDark: isDark, onBack: () => setProfileId(null), onUpdate: (id, u) => setPeople(prev => prev.map(p => p.id === id ? { ...p, ...u } : p)), onDelete: id => { setPeople(prev => prev.filter(p => p.id !== id)); setRels(prev => prev.filter(r => r.a !== id && r.b !== id)); setProfileId(null); }, onAddRel: (a, b, type, titleA = "", titleB = "") => setRels(prev => [...prev.filter(r => !((r.a === a && r.b === b) || (r.a === b && r.b === a))), { id: RID++, a, b, type, titleA, titleB }]), onRemoveRel: id => setRels(prev => prev.filter(r => r.id !== id)) });
+            return React.createElement(ResidentProfile, { person: person, people: people, rels: rels, setRels: setRels, events: events, setEvents: setEvents, messages: messages, setMessages: setMessages, th: th, isDark: isDark, onToggleMode: () => setAppMode(m => m === "day" ? "night" : "day"), onBack: () => setProfileId(null), onUpdate: (id, u) => setPeople(prev => prev.map(p => p.id === id ? { ...p, ...u } : p)), onDelete: id => { setPeople(prev => prev.filter(p => p.id !== id)); setRels(prev => prev.filter(r => r.a !== id && r.b !== id)); setProfileId(null); }, onAddRel: (a, b, type, titleA = "", titleB = "") => setRels(prev => [...prev.filter(r => !((r.a === a && r.b === b) || (r.a === b && r.b === a))), { id: RID++, a, b, type, titleA, titleB }]), onRemoveRel: id => setRels(prev => prev.filter(r => r.id !== id)) });
         })(),
         activeScene && (() => {
             const action = actions.find(a => a.id === activeScene);
@@ -1378,7 +1378,7 @@ function IllustrationLibrary({ person, illus, editing, th, onUpdate }) {
 }
 
 
-function ResidentProfile({ person, people, rels, setRels, events, setEvents, messages, setMessages, th, isDark, onBack, onUpdate, onDelete, onAddRel, onRemoveRel }) {
+function ResidentProfile({ person, people, rels, setRels, events, setEvents, messages, setMessages, th, isDark, onToggleMode, onBack, onUpdate, onDelete, onAddRel, onRemoveRel }) {
     const [tab, setTab] = useState("info"); // info | interact | messages(立繪庫)
     const [editing, setEditing] = useState(false);
     const [showAddRel, setShowAddRel] = useState(false);
@@ -1424,6 +1424,12 @@ function ResidentProfile({ person, people, rels, setRels, events, setEvents, mes
                         React.createElement("path", { d: "M15 18l-6-6 6-6" })),
                     "Back"),
                 React.createElement("span", { style: { flex: 1, fontSize: 15, fontWeight: 800, color: th.text, textAlign: "center", marginRight: 60 } }, (isDark && person.nightName) || person.name),
+                onToggleMode && React.createElement("button", { onClick: onToggleMode, style: { display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 } },
+                    isDark ? React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: th.accent },
+                        React.createElement("path", { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" })) : React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "#E8A020" },
+                        React.createElement("circle", { cx: "12", cy: "12", r: "5" }),
+                        React.createElement("path", { d: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42", fill: "none", stroke: "#E8A020", strokeWidth: "2", strokeLinecap: "round" })),
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: th.textSub, letterSpacing: 0.5 } }, isDark ? "NIGHT" : "DAY")),
                 React.createElement("button", { onClick: () => { setEditing(v => !v); setF({ name: person.name, img: person.img, portrait: person.portrait || null, age: person.age || "", height: person.height || "", personality: person.personality || "" }); }, style: { padding: "5px 12px", borderRadius: 4, border: `1px solid ${th.divider}`, background: th.card, color: th.textSub, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, editing ? "Done" : "Edit")),
             React.createElement("div", { style: { display: "flex", borderTop: `1px solid ${th.divider}` } }, [{ k: "info", label: "Profile" }, { k: "interact", label: "親密度" }, { k: "messages", label: "立繪庫" }].map(t => (React.createElement("button", { key: t.k, onClick: () => setTab(t.k), style: { flex: 1, padding: "9px 4px", border: "none", background: "transparent", color: tab === t.k ? th.accent : th.textMuted, fontSize: 11, fontWeight: tab === t.k ? 700 : 400, cursor: "pointer", fontFamily: "inherit", position: "relative", borderBottom: `2px solid ${tab === t.k ? th.accent : "transparent"}`, letterSpacing: 0.3 } }, t.label))))),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },

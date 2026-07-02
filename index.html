@@ -669,7 +669,7 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
             // the active speaker still takes top priority regardless of gender.
             const baseZ = p.gender === "female" ? 1 : 0;
             const zIdx = isSpeaker ? 3 : baseZ + 1;
-            const singlePos = n === 1 ? lastPositionByMember[p.id] : null; // "left" | "right" | undefined (defaults to centered)
+            const singlePos = n === 1 ? (lastPositionByMember[p.id] || "left") : null; // default to "left" matching the wizard UI's default selection
             // Absolute positioning anchored directly to the viewport edges — no
             // flexbox math involved, so there's no risk of overflow from width
             // calculations being slightly off. With 2 characters, the first is

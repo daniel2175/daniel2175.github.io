@@ -503,6 +503,11 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
     const curLine = lines[safeIdx] || { text: "...", speakerId: null, portraitId: "" };
     const atLastLine = lines.length === 0 || safeIdx >= lines.length - 1;
 
+    // Auto-reset to the first line every time this action is opened
+    useEffect(() => {
+        setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: 0 } : a));
+    }, [action.id]);
+
     // ── Typewriter effect ──────────────────────────────────────────────────
     const [typedLen, setTypedLen] = useState(0);
     const typewriterTimer = useRef(null);
@@ -528,13 +533,17 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
     const nextDlg = () => {
         if (lines.length === 0) return;
         if (isTyping) {
-            // Tapping while still typing skips straight to the full line instead of advancing.
             setTypedLen(fullText.length);
             clearInterval(typewriterTimer.current);
             return;
         }
-        if (atLastLine) return; // stop at the last line — no auto-wrap back to the first
+        if (atLastLine) return;
         setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: safeIdx + 1 } : a));
+    };
+    const prevDlg = (e) => {
+        e.stopPropagation();
+        if (safeIdx <= 0) return;
+        setActions(prev => prev.map(a => a.id === action.id ? { ...a, _dlgIdx: safeIdx - 1 } : a));
     };
     const resetDlg = (e) => {
         e.stopPropagation();
@@ -688,13 +697,23 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
                 React.createElement("div", { style: { fontSize: 14, color: "#fff", lineHeight: 1.7, minHeight: 46 } },
                     displayedText,
                     isTyping && React.createElement("span", { style: { opacity: 0.6 } }, "\u2588")),
-                React.createElement("div", { style: { textAlign: "right", marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)" } },
-                    isTyping ? "點擊跳過" : atLastLine ? "已結束 · 點上方重播" : "點擊繼續 ▶",
-                    " (",
-                    lines.length > 0 ? safeIdx + 1 : 1,
-                    "/",
-                    Math.max(1, lines.length),
-                    ")")),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 6 } },
+                    React.createElement("button", { onClick: prevDlg, disabled: safeIdx <= 0, style: { display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.25)", background: safeIdx <= 0 ? "transparent" : "rgba(255,255,255,0.1)", color: safeIdx <= 0 ? "rgba(255,255,255,0.2)" : "#fff", cursor: safeIdx <= 0 ? "default" : "pointer", padding: 0, flexShrink: 0 } },
+                        React.createElement("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" },
+                            React.createElement("polyline", { points: "15 18 9 12 15 6" }))),
+                    React.createElement("div", { style: { flex: 1, textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 } },
+                        atLastLine && !isTyping && React.createElement("button", { onClick: resetDlg, title: "重新播放", style: { display: "flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", padding: 0, flexShrink: 0 } },
+                            React.createElement("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.4", strokeLinecap: "round", strokeLinejoin: "round" },
+                                React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7" }),
+                                React.createElement("polyline", { points: "3 4 3 9 8 9" }))),
+                        React.createElement("span", null, lines.length > 0 ? safeIdx + 1 : 1, " / ", Math.max(1, lines.length))),
+                    React.createElement("button", { onClick: e => { e.stopPropagation(); nextDlg(); }, disabled: atLastLine && !isTyping, style: { display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.25)", background: (atLastLine && !isTyping) ? "transparent" : "rgba(255,255,255,0.1)", color: (atLastLine && !isTyping) ? "rgba(255,255,255,0.2)" : "#fff", cursor: (atLastLine && !isTyping) ? "default" : "pointer", padding: 0, flexShrink: 0 } },
+                        isTyping
+                            ? React.createElement("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" },
+                                React.createElement("polyline", { points: "13 17 18 12 13 7" }),
+                                React.createElement("polyline", { points: "6 17 11 12 6 7" }))
+                            : React.createElement("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" },
+                                React.createElement("polyline", { points: "9 18 15 12 9 6" }))))),
             scn && React.createElement("div", { style: { marginTop: 6, display: "flex", gap: 6, justifyContent: "center" } },
                 React.createElement(EffectBadge, { val: scn.love, color: "#F472B6" }),
                 React.createElement(EffectBadge, { val: scn.friendship, color: "#FBBF24" }),

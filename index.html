@@ -580,19 +580,37 @@ function VNSceneViewer({ action, people, scenarios, setActions, setActiveScene, 
             lastPortraitByMember[ln.speakerId] = ln.portraitId || "";
         }
     }
-    // The VN scene shows at most 2 characters on screen at once. Scanning
-    // backward from the current line, collect distinct speakers until we have
-    // 2 — this naturally drops the earliest speaker once a 3rd distinct person
-    // joins the conversation, while the most recent 2 stay visible.
-    const recentSpeakersOrdered = [];
-    for (let li = safeIdx; li >= 0; li--) {
-        const ln = lines[li];
-        if (ln && ln.speakerId != null && !recentSpeakersOrdered.includes(ln.speakerId)) {
-            recentSpeakersOrdered.push(ln.speakerId);
-            if (recentSpeakersOrdered.length >= 2) break;
+    // The VN scene shows at most 2 characters on screen at once.
+    // B disappears only once A has spoken 2+ consecutive lines in a row.
+    // On A's very first line (even after B spoke), B is still shown.
+    // Implemented by:
+    //   1. Count how many consecutive lines the current speaker has spoken
+    //      (their current "run length").
+    //   2. If run length is 1 → show current speaker + most recent OTHER speaker.
+    //   3. If run length ≥ 2 → show only the current speaker (B has left).
+    const onScreen = [];
+    if (safeIdx >= 0 && lines[safeIdx]?.speakerId != null) {
+        const curSpeaker = lines[safeIdx].speakerId;
+        // Count current consecutive run
+        let runLen = 0;
+        for (let li = safeIdx; li >= 0; li--) {
+            if (lines[li]?.speakerId === curSpeaker) runLen++;
+            else break;
         }
+        onScreen.push(curSpeaker);
+        if (runLen === 1) {
+            // First line of this run: show the most recent other speaker too
+            for (let li = safeIdx - 1; li >= 0; li--) {
+                const ln = lines[li];
+                if (ln && ln.speakerId != null && ln.speakerId !== curSpeaker) {
+                    onScreen.push(ln.speakerId);
+                    break;
+                }
+            }
+        }
+        // If runLen >= 2: only current speaker on screen (other character has stepped back)
     }
-    const hasSpokenSet = new Set(recentSpeakersOrdered);
+    const hasSpokenSet = new Set(onScreen);
     const inPlaylist = chapterPlaylist && chapterPlaylist.actionIds.includes(action.id);
     const playlistIdx = inPlaylist ? chapterPlaylist.actionIds.indexOf(action.id) : -1;
     const isLastInPlaylist = !inPlaylist || playlistIdx >= chapterPlaylist.actionIds.length - 1;
